@@ -44,14 +44,17 @@
     const main = document.querySelector('main');
     if (!main) return { sections: [], fullText: '' };
 
-    // 移除不需要的元素
-    const elementsToRemove = main.querySelectorAll(
+    // 克隆 main 元素以避免修改原始 DOM
+    const mainClone = main.cloneNode(true);
+
+    // 移除不需要的元素（从克隆中）
+    const elementsToRemove = mainClone.querySelectorAll(
       'button, [role="button"], iframe, .paywall, form, input'
     );
     elementsToRemove.forEach(el => el.remove());
 
     // 获取所有内容元素
-    const contentElements = main.querySelectorAll(
+    const contentElements = mainClone.querySelectorAll(
       'h2, h3, h4, h5, h6, p, ul, ol, blockquote, pre, code'
     );
 
@@ -80,8 +83,8 @@
       }
     });
 
-    // 获取完整文本
-    const fullText = main.textContent?.trim() || '';
+    // 获取完整文本（从克隆中）
+    const fullText = mainClone.textContent?.trim() || '';
 
     return { sections, fullText };
   }

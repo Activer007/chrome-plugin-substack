@@ -9,7 +9,8 @@
     "downloads"
   ],
   "host_permissions": [
-    "https://*.substack.com/*"
+    "https://*.substack.com/*",
+    "http://*.substack.com/*"
   ],
   "action": {
     "default_popup": "popup.html",
@@ -26,7 +27,7 @@
   },
   "content_scripts": [
     {
-      "matches": ["https://*.substack.com/*"],
+      "matches": ["https://*/*", "http://*/*"],
       "js": ["content.js"],
       "run_at": "document_end"
     }

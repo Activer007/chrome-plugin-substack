@@ -10,6 +10,12 @@ document.addEventListener('DOMContentLoaded', async () => {
   const previewContainer = document.getElementById('previewContainer');
   const markdownPreview = document.getElementById('markdownPreview');
 
+  // 检查所有必需元素是否存在
+  if (!statusEl || !extractBtn || !previewBtn) {
+    console.error('Missing required DOM elements');
+    return;
+  }
+
   let articleData = null;
 
   // 检查当前页面
@@ -105,7 +111,20 @@ document.addEventListener('DOMContentLoaded', async () => {
       }
 
       const markdown = results[0].result;
-      const filename = 'substack-' + Date.now() + '.md';
+
+      // 生成友好的文件名
+      const filenameResults = await chrome.scripting.executeScript({
+        target: { tabId: tab.id },
+        func: (data) => {
+          if (window.SubstackExtractor) {
+            return window.SubstackExtractor.generateFilename(data);
+          }
+          return null;
+        },
+        args: [articleData]
+      });
+
+      const filename = filenameResults?.[0]?.result || 'substack-article.md';
 
       // 使用 Chrome Downloads API 下载文件
       const blob = new Blob([markdown], { type: 'text/markdown;charset=utf-8' });
