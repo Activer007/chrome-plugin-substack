@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128">
+  <!-- 背景圆形 -->
+  <circle cx="64" cy="64" r="64" fill="#FF6719"/>
+
+  <!-- 白色堆栈图标 -->
+  <g fill="#FFFFFF">
+    <!-- 底部条 -->
+    <rect x="28" y="75" width="72" height="8" rx="2"/>
+
+    <!-- 中间条 -->
+    <rect x="28" y="59" width="72" height="8" rx="2"/>
+
+    <!-- 顶部条 -->
+    <rect x="28" y="43" width="72" height="8" rx="2"/>
+
+    <!-- 箭头指示下载/保存 -->
+    <path d="M64 20 L64 38 M64 38 L58 32 M64 38 L70 32"
+          stroke="#FFFFFF"
+          stroke-width="3"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          fill="none"/>
+  </g>
+
+  <!-- 小 MD 标识 -->
+  <text x="64" y="110"
+        font-family="Arial, sans-serif"
+        font-size="14"
+        font-weight="bold"
+        fill="#FFFFFF"
+        text-anchor="middle">MD</text>
+</svg>

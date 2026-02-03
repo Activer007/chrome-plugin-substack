@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Substack to Markdown - 图标生成器</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      max-width: 800px;
+      margin: 50px auto;
+      padding: 20px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+    }
+
+    .container {
+      background: white;
+      border-radius: 16px;
+      padding: 40px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    }
+
+    h1 {
+      text-align: center;
+      color: #333;
+      margin-bottom: 10px;
+    }
+
+    .subtitle {
+      text-align: center;
+      color: #666;
+      margin-bottom: 40px;
+    }
+
+    .preview-section {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 40px;
+      margin: 40px 0;
+      padding: 30px;
+      background: #f8f9fa;
+      border-radius: 12px;
+    }
+
+    .icon-preview {
+      text-align: center;
+    }
+
+    .icon-preview canvas {
+      border: 2px solid #ddd;
+      border-radius: 8px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+      margin: 10px 0;
+    }
+
+    .icon-preview span {
+      display: block;
+      margin-top: 10px;
+      font-size: 14px;
+      color: #666;
+      font-weight: 600;
+    }
+
+    .button-group {
+      display: flex;
+      gap: 15px;
+      justify-content: center;
+      margin: 30px 0;
+    }
+
+    button {
+      padding: 15px 30px;
+      font-size: 16px;
+      font-weight: 600;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.3s;
+      background: linear-gradient(135deg, #FF6719 0%, #FF8542 100%);
+      color: white;
+      box-shadow: 0 4px 12px rgba(255, 103, 25, 0.3);
+    }
+
+    button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 16px rgba(255, 103, 25, 0.4);
+    }
+
+    button:active {
+      transform: translateY(0);
+    }
+
+    button.secondary {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+    }
+
+    button.secondary:hover {
+      box-shadow: 0 6px 16px rgba(102, 126, 234, 0.4);
+    }
+
+    .info {
+      background: #e7f3ff;
+      border-left: 4px solid #2196F3;
+      padding: 20px;
+      border-radius: 8px;
+      margin: 30px 0;
+    }
+
+    .info h3 {
+      margin-top: 0;
+      color: #1976D2;
+    }
+
+    .info ul {
+      margin: 10px 0;
+      padding-left: 20px;
+    }
+
+    .info li {
+      margin: 8px 0;
+      color: #555;
+    }
+
+    .success {
+      background: #d4edda;
+      border-left: 4px solid #28a745;
+      padding: 15px;
+      border-radius: 8px;
+      margin: 20px 0;
+      color: #155724;
+      display: none;
+    }
+
+    .success.show {
+      display: block;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🎨 Substack to Markdown 图标生成器</h1>
+    <p class="subtitle">生成 Chrome 插件所需的图标文件</p>
+
+    <div class="preview-section">
+      <div class="icon-preview">
+        <canvas id="canvas16" width="16" height="16"></canvas>
+        <span>16×16</span>
+      </div>
+      <div class="icon-preview">
+        <canvas id="canvas48" width="48" height="48"></canvas>
+        <span>48×48</span>
+      </div>
+      <div class="icon-preview">
+        <canvas id="canvas128" width="128" height="128"></canvas>
+        <span>128×128</span>
+      </div>
+    </div>
+
+    <div class="button-group">
+      <button onclick="downloadAll()">📥 下载所有图标</button>
+      <button class="secondary" onclick="downloadSingle('16')">下载 16×16</button>
+      <button class="secondary" onclick="downloadSingle('48')">下载 48×48</button>
+      <button class="secondary" onclick="downloadSingle('128')">下载 128×128</button>
+    </div>
+
+    <div id="success" class="success">
+      ✅ 图标已成功生成并下载！
+    </div>
+
+    <div class="info">
+      <h3>📋 使用说明</h3>
+      <ul>
+        <li><strong>预览</strong>: 上方显示三个尺寸的图标预览</li>
+        <li><strong>下载所有</strong>: 一键下载所有三个尺寸的 PNG 文件</li>
+        <li><strong>单独下载</strong>: 可以下载特定尺寸的图标</li>
+        <li><strong>设计风格</strong>: 采用 Substack 品牌橙色 (#FF6719)，配合堆栈线条设计</li>
+        <li><strong>图标含义</strong>: 三条横线代表文章内容堆叠，箭头表示下载/保存，"MD" 代表 Markdown</li>
+      </ul>
+    </div>
+
+    <div class="info">
+      <h3>🎯 图标设计说明</h3>
+      <ul>
+        <li><strong>颜色</strong>: Substack 品牌橙色 (#FF6719) - 圆形背景</li>
+        <li><strong>堆叠线条</strong>: 三条白色横线代表文章内容的堆叠</li>
+        <li><strong>箭头</strong>: 向下箭头表示下载/保存操作</li>
+        <li><strong>MD 标识</strong>: 底部 "MD" 文字表示 Markdown 格式</li>
+        <li><strong>尺寸</strong>: 16×16（工具栏）、48×48（扩展管理）、128×128（Chrome 商店）</li>
+      </ul>
+    </div>
+  </div>
+
+  <script>
+    // 绘制图标到 Canvas
+    function drawIcon(canvas, size) {
+      const ctx = canvas.getContext('2d');
+      const scale = size / 128;
+
+      ctx.clearRect(0, 0, size, size);
+      ctx.save();
+      ctx.scale(scale, scale);
+
+      // 背景圆形
+      ctx.beginPath();
+      ctx.arc(64, 64, 64, 0, Math.PI * 2);
+      ctx.fillStyle = '#FF6719';
+      ctx.fill();
+
+      // 白色堆栈图标
+      ctx.fillStyle = '#FFFFFF';
+
+      // 底部条
+      roundRect(ctx, 28, 75, 72, 8, 2);
+
+      // 中间条
+      roundRect(ctx, 28, 59, 72, 8, 2);
+
+      // 顶部条
+      roundRect(ctx, 28, 43, 72, 8, 2);
+
+      // 箭头
+      ctx.strokeStyle = '#FFFFFF';
+      ctx.lineWidth = 3;
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+
+      ctx.beginPath();
+      ctx.moveTo(64, 20);
+      ctx.lineTo(64, 38);
+      ctx.stroke();
+
+      // 箭头左侧
+      ctx.beginPath();
+      ctx.moveTo(64, 38);
+      ctx.lineTo(58, 32);
+      ctx.stroke();
+
+      // 箭头右侧
+      ctx.beginPath();
+      ctx.moveTo(64, 38);
+      ctx.lineTo(70, 32);
+      ctx.stroke();
+
+      // MD 标识
+      ctx.fillStyle = '#FFFFFF';
+      ctx.font = 'bold 14px Arial, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('MD', 64, 110);
+
+      ctx.restore();
+    }
+
+    // 绘制圆角矩形
+    function roundRect(ctx, x, y, width, height, radius) {
+      ctx.beginPath();
+      ctx.moveTo(x + radius, y);
+      ctx.lineTo(x + width - radius, y);
+      ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
+      ctx.lineTo(x + width, y + height - radius);
+      ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
+      ctx.lineTo(x + radius, y + height);
+      ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
+      ctx.lineTo(x, y + radius);
+      ctx.quadraticCurveTo(x, y, x + radius, y);
+      ctx.closePath();
+      ctx.fill();
+    }
+
+    // 下载单个图标
+    function downloadIcon(size) {
+      const canvas = document.getElementById(`canvas${size}`);
+      const url = canvas.toDataURL('image/png');
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `icon${size}.png`;
+      a.click();
+    }
+
+    // 下载所有图标
+    function downloadAll() {
+      downloadIcon(16);
+      setTimeout(() => downloadIcon(48), 200);
+      setTimeout(() => downloadIcon(128), 400);
+
+      // 显示成功消息
+      setTimeout(() => {
+        const success = document.getElementById('success');
+        success.classList.add('show');
+        setTimeout(() => {
+          success.classList.remove('show');
+        }, 3000);
+      }, 500);
+    }
+
+    // 下载单个图标的包装函数
+    function downloadSingle(size) {
+      downloadIcon(size);
+      const success = document.getElementById('success');
+      success.textContent = `✅ icon${size}.png 已下载！`;
+      success.classList.add('show');
+      setTimeout(() => {
+        success.classList.remove('show');
+        success.textContent = '✅ 图标已成功生成并下载！';
+      }, 2000);
+    }
+
+    // 页面加载时绘制图标
+    window.addEventListener('load', () => {
+      drawIcon(document.getElementById('canvas16'), 16);
+      drawIcon(document.getElementById('canvas48'), 48);
+      drawIcon(document.getElementById('canvas128'), 128);
+    });
+  </script>
+</body>
+</html>

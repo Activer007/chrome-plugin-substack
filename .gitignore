@@ -1,0 +1,31 @@
+# Dependencies
+node_modules/
+package-lock.json
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Build
+dist/
+build/
+*.log
+
+# Claude
+.claude/
+
+# Test files
+*.test.js
+test/
+
+# Temporary files
+*.tmp
+.temp/
