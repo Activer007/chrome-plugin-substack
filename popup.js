@@ -647,7 +647,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                 audio, video,
                 [class*="player"],
                 [class*="audio"],
-                [class*="video"] {
+                [class*="video"],
+                /* Article header elements that cause blank space */
+                [class*="pc-justifyContent-center"] {
                   display: none !important;
                 }
 
@@ -863,6 +865,15 @@ document.addEventListener('DOMContentLoaded', async () => {
                   position: static !important;
                   overflow: visible !important;
                   z-index: 9999 !important;
+                }
+
+                /* Hide article header elements that cause blank space - must be last for highest priority */
+                article div[class*="pc-justifyContent-center"] {
+                  display: none !important;
+                }
+
+                div[class*="modalViewer"] div.pencraft[class*="pc-justifyContent-center"] {
+                  display: none !important;
                 }
               }
             `;
