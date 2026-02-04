@@ -10,7 +10,8 @@
   ],
   "host_permissions": [
     "https://*.substack.com/*",
-    "http://*.substack.com/*"
+    "http://*.substack.com/*",
+    "https://*.substackcdn.com/*"
   ],
   "action": {
     "default_popup": "popup.html",

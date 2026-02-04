@@ -13,6 +13,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   const markdownPreview = document.getElementById('markdownPreview');
   const useFrontmatterEl = document.getElementById('useFrontmatter');
   const filenameFormatEl = document.getElementById('filenameFormat');
+  const downloadImagesEl = document.getElementById('downloadImages');
 
   if (!statusEl || !extractBtn || !previewBtn) {
     console.error('Missing required DOM elements');
@@ -25,6 +26,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     filenameFormatEl.value = savedFormat;
     filenameFormatEl.addEventListener('change', () => {
       localStorage.setItem('filenameFormat', filenameFormatEl.value);
+    });
+  }
+
+  if (downloadImagesEl) {
+    downloadImagesEl.checked = localStorage.getItem('downloadImages') === 'true';
+    downloadImagesEl.addEventListener('change', () => {
+      localStorage.setItem('downloadImages', downloadImagesEl.checked);
     });
   }
 
@@ -383,22 +391,110 @@ document.addEventListener('DOMContentLoaded', async () => {
      }
   }
 
+  async function fetchImage(url) {
+    try {
+      const response = await fetch(url);
+      if (!response.ok) throw new Error('Fetch failed');
+      return await response.blob();
+    } catch (e) {
+      console.warn('Failed to fetch image:', url, e);
+      return null;
+    }
+  }
+
   async function extractAndDownload() {
     if (!articleData) return;
+
+    const isZipMode = downloadImagesEl && downloadImagesEl.checked;
+
     try {
       extractBtn.disabled = true;
-      extractBtn.innerHTML = 'Processing...';
+      extractBtn.innerHTML = isZipMode ? 'Initializing...' : 'Processing...';
 
-      const md = generateMarkdown(articleData);
       const filename = generateFilename(articleData);
-      const blob = new Blob([md], { type: 'text/markdown;charset=utf-8' });
-      const url = URL.createObjectURL(blob);
 
-      await chrome.downloads.download({
-        url: url,
-        filename: filename,
-        saveAs: true
-      });
+      if (isZipMode) {
+        // ZIP Mode Implementation
+        if (typeof JSZip === 'undefined') {
+          throw new Error('JSZip library not loaded');
+        }
+
+        const zip = new JSZip();
+        const assetsFolder = zip.folder("assets");
+        const imageMap = new Map();
+
+        // 1. Collect all image URLs
+        const urls = [];
+        if (articleData.meta?.image) urls.push(articleData.meta.image);
+        articleData.content.sections.forEach(s => {
+          if (s.type === 'image') urls.push(s.content);
+        });
+
+        // Deduplicate
+        const uniqueUrls = [...new Set(urls)];
+
+        // 2. Download images
+        let downloadCount = 0;
+        for (const url of uniqueUrls) {
+           downloadCount++;
+           extractBtn.innerHTML = `Downloading images (${downloadCount}/${uniqueUrls.length})...`;
+
+           const blob = await fetchImage(url);
+           if (blob) {
+             // Generate extension from blob type or URL
+             let ext = 'jpg';
+             if (blob.type === 'image/png') ext = 'png';
+             else if (blob.type === 'image/gif') ext = 'gif';
+             else if (blob.type === 'image/webp') ext = 'webp';
+             else if (blob.type === 'image/svg+xml') ext = 'svg';
+
+             const imgName = `image-${downloadCount}.${ext}`;
+             assetsFolder.file(imgName, blob);
+             imageMap.set(url, `assets/${imgName}`);
+           }
+        }
+
+        // 3. Create modified data with local paths
+        const localData = JSON.parse(JSON.stringify(articleData));
+
+        if (localData.meta?.image && imageMap.has(localData.meta.image)) {
+           localData.meta.image = imageMap.get(localData.meta.image);
+        }
+
+        localData.content.sections.forEach(s => {
+           if (s.type === 'image' && imageMap.has(s.content)) {
+              s.content = imageMap.get(s.content);
+           }
+        });
+
+        // 4. Generate Markdown and ZIP
+        extractBtn.innerHTML = 'Compressing...';
+        const md = generateMarkdown(localData);
+        zip.file(filename, md); // Use the same filename inside the zip
+
+        const zipBlob = await zip.generateAsync({type:"blob"});
+        const zipName = filename.replace(/\.md$/, '') + '.zip';
+        const url = URL.createObjectURL(zipBlob);
+
+        await chrome.downloads.download({
+           url: url,
+           filename: zipName,
+           saveAs: true
+        });
+
+      } else {
+        // Standard Markdown Mode
+        const md = generateMarkdown(articleData);
+        const blob = new Blob([md], { type: 'text/markdown;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+
+        await chrome.downloads.download({
+          url: url,
+          filename: filename,
+          saveAs: true
+        });
+      }
+
       showStatus('✅ Downloaded!', 'success');
     } catch (e) {
       console.error(e);
