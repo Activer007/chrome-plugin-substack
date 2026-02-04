@@ -647,7 +647,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                 audio, video,
                 [class*="player"],
                 [class*="audio"],
-                [class*="video"] {
+                [class*="video"],
+                /* Navigation elements that cause large blank space */
+                [class*="pc-paddingTop-24"][class*="pc-justifyContent-center"] {
                   display: none !important;
                 }
 
