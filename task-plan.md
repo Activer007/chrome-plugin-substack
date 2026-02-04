@@ -15,689 +15,208 @@
 ```
 chrome-plugin-substack/
 ├── manifest.json       # Manifest V3 配置
-├── content.js          # 内容提取逻辑（注入页面）
-├── popup.js            # 弹出窗口交互
-├── background.js       # 后台服务
-└── popup.html          # 用户界面
+├── popup.js            # 核心逻辑 (注入提取与转换)
+├── popup.html          # 用户界面
+└── icons/              # 图标资源
 ```
 
 ---
 
-## 🚀 改进方向（12个维度）
+## 🚀 改进方向（14个维度）
 
-### **一、批量处理与自动化**
+### **一、UI/UX 设计重构：Substack 原生风 (Lite & Native)**
+**目标**：打造与 Substack 平台视觉一致的沉浸式体验。
+- **视觉风格**：
+    - **极简主义 (Clean & Minimalist)**：去除厚重渐变背景，采用极简白底 + 柔和阴影。
+    - **品牌色**：使用 **Substack Orange (#FF6719)** 作为主操作按钮颜色，建立"原生感"。
+    - **字体**：标题使用衬线体 (Georgia / Merriweather) 呼应文学质感，正文使用系统无衬线体。
+    - **排版**：增加留白 (Whitespace)，提升阅读呼吸感。
+- **交互体验**：
+    - **渐进式披露**：初始仅显示文章卡片（封面+标题），点击"预览"或"设置"后展开更多面板。
+    - **微交互**：按钮加载状态、成功/失败的轻微震动反馈。
+    - **Tab 布局**：重构为底部导航栏 (主页 / 历史 / 设置)。
+- **布局重构**：
+    - **Header**: Logo + 设置入口。
+    - **Main**: 带有封面图背景的文章状态卡片 + 大尺寸 CTA 按钮。
+    - **Footer**: 导航切换。
 
-#### 1.1 批量下载功能
+### **二、核心体验增强 (Core UX)**
+
+#### 2.1 剪贴板支持 (Clipboard)
+**方案**：一键复制生成的 Markdown
+- 在 Popup 界面添加 "Copy to Clipboard" 按钮
+- 方便直接粘贴到 Notion, Obsidian 或其他笔记软件
+- 显示 "Copied!" Toast 提示
+
+#### 2.2 预览模式 (Preview)
+**方案**：下载前确认内容
+- 在下载前展示 Markdown 预览窗口
+- 允许用户简单编辑或勾选需要保留的段落
+- 使用 Monaco Editor 或 Highlight.js 渲染预览
+
+#### 2.3 快捷操作
+- **右键菜单集成**：网页右键菜单添加 "Save as Markdown"
+- **快捷键**：支持 `Alt+Shift+M` 快速触发
+
+---
+
+### **三、导出格式扩展**
+
+#### 3.1 PDF 导出支持
+**方案A：原生打印优化 (Native Print) - 🌟 推荐方案**
+*利用 Chrome 原生渲染引擎，注入打印样式表*
+- **实现**：点击 "Export PDF" 时注入 `@media print` 样式
+- **样式优化**：移除侧边栏/导航/广告，强制白底黑字，优化图片分页逻辑
+- **优势**：渲染最完美（文字矢量可复制），代码极轻量
+- **劣势**：需用户在打印预览框手动保存
+
+**方案B：Markdown 转 PDF (Markdown-based) - 🟡 远期规划**
+*在前端将生成的 Markdown 重渲染为 PDF*
+- **实现**：`Markdown` -> `pagedjs` -> `PDF`
+- **优势**：格式最纯净，完全重排版
+- **状态**：列为低优先级，视未来需求决定是否实现
+
+#### 3.2 自定义模板与 YAML Frontmatter
+**方案**：满足笔记软件（Obsidian/Notion）的元数据需求
+- **YAML 头**：标准化的元数据块，支持 tags, date, author, url
+- **模板配置**：
+  ```yaml
+  ---
+  title: "{{title}}"
+  author: "{{author}}"
+  date: {{date}}
+  url: "{{url}}"
+  tags: [substack, {{tags}}]
+  ---
+
+  # {{title}}
+  ```
+- **文件名模板**：允许用户定义 `{{date}}-{{title}}` 或 `{{author}}/{{title}}`
+
+#### 3.3 多格式导出
+- 支持 HTML (纯净版)
+
+---
+
+### **四、内容处理增强**
+
+#### 4.1 图片本地化 (ZIP 导出)
+**方案**：解决远程图片失效及防盗链问题
+- 引入 `JSZip` 库
+- 自动下载文章内图片到 `assets/` 目录
+- Markdown 引用相对路径
+- 打包下载 `article.zip` (包含 `.md` 和图片文件夹)
+
+#### 4.2 智能内容清理 ("纯净模式")
+**方案**：移除干扰信息
+- 移除营销内容（Subscribe 按钮、"Gift a subscription"、推荐阅读）
+- 增加黑名单选择器配置
+- 提取核心正文，过滤 Sidebar 和 Footer
+
+#### 4.3 脚注 (Footnotes) 支持
+**方案**：完善学术/深度文章体验
+- 识别 `<sup>` 标签和脚注链接
+- 转换为标准 Markdown 脚注格式 (`[^1]: ...`)
+- 确保引用跳转正常
+
+#### 4.4 AI 摘要生成 (实验性)
+- 调用 OpenAI/Claude API 生成文章摘要
+- 在 Markdown 顶部添加 "TL;DR"
+
+---
+
+### **五、批量处理与自动化**
+
+#### 5.1 批量下载功能
 **方案**：添加"订阅源批量下载"功能
-- 从作者归档页面提取所有文章链接
+- 从作者归档页面 (`/archive`) 提取所有文章链接
 - 队列化下载，避免请求过载
 - 显示进度条和下载状态
 - 支持暂停/恢复
 
-**价值**：用户可一键备份整个订阅源
-
-**实现要点**：
-```javascript
-// 新增文件: batch-downloader.js
-class BatchDownloader {
-  - extractArticleLinks(archiveUrl)
-  - queueDownload(links)
-  - updateProgress(current, total)
-  - pause/resume()
-}
-```
-
-#### 1.2 自动同步功能
+#### 5.2 自动同步功能
 **方案**：定期自动检查并下载新文章
 - 后台定时任务（每小时/每天）
 - 只下载新文章，去重机制
-- 增量更新本地知识库
-
-**技术要点**：
-- 使用 Chrome Alarms API
-- IndexedDB 存储已下载文章记录
-- 后台 Service Worker 定期执行
 
 ---
 
-### **二、内容处理增强**
+### **六、云服务集成**
 
-#### 2.1 图片本地化
-**方案**：自动下载图片并替换链接
-- 将图片保存到本地文件夹
-- Markdown 中引用本地路径
-- 支持打包成 ZIP（包含图片和 MD）
+#### 6.1 Obsidian 深度集成
+**方案**：优化 Obsidian 工作流
+- **URI Scheme 唤起**：增加 "Save to Obsidian" 按钮
+- 使用 `obsidian://new?name=...&content=...` 直接创建笔记
 
-**价值**：离线可用，永久保存
-
-**实现要点**：
-```javascript
-// content.js 增强
-async function downloadImages(images) {
-  const folder = 'images/' + generateFilename(data);
-  for (const img of images) {
-    const blob = await fetch(img.src).then(r => r.blob());
-    const localPath = await chrome.downloads.download({
-      url: URL.createObjectURL(blob),
-      filename: folder + '/' + sanitizeFilename(img.alt),
-      saveAs: false
-    });
-    img.localPath = localPath;
-  }
-}
-```
-
-#### 2.2 智能内容清理
-**方案**：提供"纯净模式"
-- 移除营销内容（Subscribe 按钮、推荐阅读）
-- 提取核心正文
-- 保留关键引用和数据
-
-**配置选项**：
-```javascript
-const cleanupOptions = {
-  removeSubscribeButtons: true,
-  removeRecommendedReading: true,
-  removeFooterCTA: true,
-  preserveQuotes: true,
-  preserveData: true
-};
-```
-
-#### 2.3 AI 摘要生成
-**方案**：集成 AI API 生成摘要
-- 调用 OpenAI/Claude API
-- 在 Markdown 顶部添加摘要
-- 提取关键要点（3-5 bullet points）
-
-**用户配置**：
-- API Key 自行提供（隐私保护）
-- 可选功能开关
-- 支持选择 AI 模型
+#### 6.2 Notion/云存储同步
+- 一键推送到 Notion 数据库（需集成 Notion API）
+- WebDAV 网盘同步支持
 
 ---
 
-### **三、多平台扩展**
+### **七、架构优化与工程化**
 
-#### 3.1 平台适配器架构
-**方案**：设计可插拔的内容提取器
-```
-extractors/
-├── base-extractor.js      # 基础接口
-├── substack-extractor.js  # Substack（已有）
-├── medium-extractor.js    # Medium（新增）
-├── ghost-extractor.js     # Ghost（新增）
-└── wordpress-extractor.js # WordPress（新增）
-```
+#### 7.1 提取引擎增强 (Readability.js)
+**方案**：增强容错性
+- 当 Substack 特定选择器失效时，自动回退到 Mozilla 的 `Readability.js` 算法
+- 确保非标准页面也能提取出正文
 
-**接口设计**：
-```javascript
-class BaseExtractor {
-  canHandle(url) { return false; }
-  extractArticleData() { return {}; }
-  convertToMarkdown(data) { return ''; }
-}
-```
+#### 7.2 转换引擎升级 (Turndown)
+**方案**：更稳健的 Markdown 生成
+- 引入 `turndown` 库替代手写正则替换
+- 更好地处理复杂嵌套（表格、引用代码块）
 
-#### 3.2 通用文章识别
-**方案**：基于 JSON-LD + Schema.org
-- 自动识别任何结构化数据的文章
-- 适配 WordPress、Ghost 等主流 CMS
-
-**检测逻辑**：
-```javascript
-function detectPlatform() {
-  // 1. 检查 JSON-LD
-  const jsonLd = document.querySelector('script[type="application/ld+json"]');
-  if (jsonLd) return 'schema-org';
-
-  // 2. 检查特定标记
-  if (document.querySelector('meta[property="og:site_name"][content="Medium"]')) {
-    return 'medium';
-  }
-
-  // 3. 检查 URL 模式
-  if (url.match(/substack\.com/)) return 'substack';
-
-  return 'generic';
-}
-```
+#### 7.3 代码模块化
+- 将 `popup.js` 拆分为：
+  - `extractor.js`: 负责 DOM 解析
+  - `converter.js`: 负责 HTML -> MD 转换
+  - `ui.js`: 负责 Popup 交互
 
 ---
 
-### **四、导出格式扩展**
+## 🎯 实施优先级与路线图
 
-#### 4.1 多格式导出
-**方案**：支持多种输出格式
+基于 "Quick Wins" -> "Core Value" -> "Scale" 的策略：
 
-| 格式 | 用途 | 优先级 |
-|------|------|--------|
-| PDF | 打印、分享 | 高 |
-| HTML | 单文件归档 | 中 |
-| Org-mode | Emacs 用户 | 低 |
-| Notion API | 直接导入 Notion | 高 |
-| Obsidian | 带_frontmatter_ | 高 |
+### 🟢 第一阶段：核心体验增强 (Quick Wins)
+**目标**：不改变架构，大幅提升生成的 Markdown 质量和易用性，并完成 UI 改版。
+*预计耗时：3-4 天*
 
-**实现方式**：
-```javascript
-// exporters/
-├── markdown-exporter.js
-├── pdf-exporter.js       // 使用 jsPDF 或浏览器打印
-├── html-exporter.js      // 单文件 HTML
-├── notion-exporter.js    // Notion API
-└── obsidian-exporter.js  // 添加 frontmatter
-```
+1.  **UI/UX 重构**: 实现 "Substack 原生风" 界面（白底、橙色按钮、衬线体）。
+2.  **YAML Frontmatter**: 添加标准元数据头，方便 Obsidian/Notion 索引。
+3.  **PDF 导出 (Lite)**: 实现基于 CSS 的原生打印优化方案。
+4.  **剪贴板支持**: 添加 "Copy Markdown" 按钮，解决高频粘贴需求。
+5.  **脚注支持**: 解析 `<sup>` 和锚点，生成标准脚注。
+6.  **自定义文件名**: 允许用户配置命名规则（如 `yyyy-MM-dd-Title.md`）。
 
-#### 4.2 自定义模板
-**方案**：用户可自定义 Markdown 模板
+### 🔵 第二阶段：高级功能 (Power Features)
+**目标**：解决"永久存档"和"无缝集成"的痛点。
+*预计耗时：1 周*
 
-**模板配置界面**：
-```json
-{
-  "template": {
-    "titleFormat": "# {{title}}",
-    "includeMetadata": true,
-    "includeImage": true,
-    "imagePosition": "after_title",
-    "contentFormat": "clean",
-    "footer": "---\n提取于 {{date}}",
-    "customFrontmatter": {
-      "tags": "{{tags}}",
-      "source": "{{url}}"
-    }
-  }
-}
-```
+1.  **图片本地化 (ZIP)**: 使用 JSZip 打包图片和 Markdown，实现真正离线阅读。
+2.  **Obsidian 一键保存**: 利用 URI Scheme 直接写入 Obsidian Vault。
+3.  **智能内容清理**: 增加"纯净模式"选项，移除推广干扰。
+4.  **预览界面**: 下载前预览并确认内容，支持 Monaco Editor 高亮。
+
+### 🟠 第三阶段：架构升级与扩展 (Scale)
+**目标**：提升代码稳健性，支持更多场景。
+*预计耗时：2 周*
+
+1.  **引入 Readability.js & Turndown**: 重构核心提取与转换层。
+2.  **批量下载**: 队列化处理订阅源归档。
+3.  **多平台适配**: 扩展支持 Medium 等平台。
+
+### ⚪ 第四阶段：Chrome 官方合规性检查 (Post-Release)
+**目标**：确保插件符合 Store 发布标准（优先级最低，功能完备后再做）。
+*预计耗时：1 天*
+
+1.  **依赖本地化**: 检查所有第三方库（如 JSZip, Turndown）是否已下载到本地，移除所有 CDN 链接。
+2.  **CSP 检查**: 确保无内联脚本违反 Content Security Policy。
+3.  **权限最小化**: 移除未使用的 `host_permissions` 或 `permissions`。
+4.  **图标规范**: 补充 32x32px 图标，检查各尺寸图标显示效果。
+5.  **Service Worker 持久化**: 检查后台任务是否依赖全局变量（针对 V3 瞬时特性）。
 
 ---
 
-### **五、云服务集成**
-
-#### 5.1 直接同步到笔记软件
-**方案**：一键推送到各类服务
-
-**优先支持**：
-1. **Notion** - API 成熟，用户量大
-2. **Obsidian** - 通过 Git 仓库自动同步
-3. **Readwise Reader** - 流行阅读管理工具
-4. **Logseq** - 知识管理工具
-
-**Notion 集成示例**：
-```javascript
-async function pushToNotion(markdown, title) {
-  const response = await fetch('https://api.notion.com/v1/pages', {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${userConfig.notionToken}`,
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify({
-      parent: { database_id: userConfig.notionDatabaseId },
-      properties: {
-        title: { title: [{ text: { content: title } }] }
-      },
-      children: markdownToNotionBlocks(markdown)
-    })
-  });
-}
-```
-
-#### 5.2 WebDAV/云存储
-**方案**：保存到云盘
-- 支持 WebDAV（坚果云、Nextcloud）
-- Google Drive API
-- Dropbox API
-- OneDrive API
-
-**配置界面**：
-```
-云存储设置:
-┌─────────────────────────────┐
-│ 服务提供商: [WebDAV     ▼] │
-│ 服务器地址: [https://...]   │
-│ 用户名:     [_____________] │
-│ 密码:       [_____________] │
-│ 保存路径:   /Substack/      │
-│ [测试连接] [保存配置]        │
-└─────────────────────────────┘
-```
-
----
-
-### **六、知识管理功能**
-
-#### 6.1 标签与分类
-**方案**：自动提取和添加标签
-- 从文章元数据提取 tags
-- AI 生成主题标签
-- 用户自定义分类
-- 保存到 Markdown frontmatter
-
-**输出格式**：
-```markdown
----
-title: "如何构建成功的工程团队"
-author: "John Doe"
-tags: [工程管理, 团队协作, 领导力]
-category: 技术管理
-date: 2026-01-29
-source: substack
-source_url: https://...
-extracted_at: 2026-01-30T10:30:00Z
----
-
-# 如何构建成功的工程团队
-...
-```
-
-#### 6.2 全文搜索
-**方案**：建立本地索引
-- 使用 Chrome IndexedDB 存储元数据
-- 支持全文搜索已下载文章
-- 快速查找历史文章
-
-**搜索界面**：
-```javascript
-// popup.html 增强
-<input type="text" id="searchInput" placeholder="搜索已下载的文章...">
-
-<div id="searchResults">
-  <article>
-    <h3>如何构建成功的工程团队</h3>
-    <p>匹配片段: ...工程文化是...</p>
-    <button>重新下载</button>
-  </article>
-</div>
-```
-
----
-
-### **七、协作与分享**
-
-#### 7.1 生成分享链接
-**方案**：将 Markdown 上传到公共服务
-- GitHub Gist（匿名或登录）
-- Pastebin
-- 临时分享链接
-
-**实现**：
-```javascript
-async function shareToGist(markdown) {
-  const response = await fetch('https://api.github.com/gists', {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${userConfig.githubToken}`,
-      'Accept': 'application/vnd.github.v3+json'
-    },
-    body: JSON.stringify({
-      description: 'Substack article export',
-      public: false,
-      files: {
-        'article.md': { content: markdown }
-      }
-    })
-  });
-  return response.html_url;
-}
-```
-
-#### 7.2 高亮与笔记
-**方案**：允许用户在页面添加标注
-- 选择文本 → 添加高亮
-- 添加个人笔记
-- 导出到 Markdown 时包含笔记
-
-**数据结构**：
-```javascript
-const annotations = {
-  articleUrl: 'https://...',
-  highlights: [
-    { text: '关键句...', note: '我的思考', position: 123 }
-  ],
-  notes: [
-    { content: '整体评论', timestamp: '...' }
-  ]
-};
-```
-
----
-
-### **八、开发者体验**
-
-#### 8.1 开放 API
-**方案**：提供编程接口
-```javascript
-// 其他扩展可调用
-chrome.runtime.sendMessage(
-  'extension-id',
-  { action: 'extractArticle', url: '...' },
-  response => console.log(response.data)
-);
-```
-
-#### 8.2 调试模式
-**方案**：开发者工具面板
-- 查看 JSON-LD 原始数据
-- 测试提取规则
-- 验证 Markdown 输出
-
-**DevTools Panel**：
-```
-Substack Extractor DevTools
-├── [Raw Data] - JSON-LD 原始数据
-├── [Extracted] - 提取后的结构化数据
-├── [Markdown] - 生成的 Markdown
-└── [Settings] - 调试选项
-```
-
----
-
-### **九、性能与可靠性**
-
-#### 9.1 增量更新检测
-**方案**：智能判断是否需要重新下载
-- 记录已下载文章 URL 和 dateModified
-- 检测文章是否更新
-- 只下载变化的内容
-
-**数据存储**：
-```javascript
-// IndexedDB
-const db = {
-  name: 'SubstackExtractorDB',
-  stores: {
-    articles: {
-      keyPath: 'url',
-      indexes: ['dateModified', 'downloadedAt']
-    }
-  }
-};
-```
-
-#### 9.2 错误恢复
-**方案**：失败重试机制
-- 网络错误自动重试（3次）
-- 保存失败队列
-- 稍后重试
-
-**重试逻辑**：
-```javascript
-async function retryDownload(url, maxRetries = 3) {
-  for (let i = 0; i < maxRetries; i++) {
-    try {
-      return await download(url);
-    } catch (error) {
-      if (i === maxRetries - 1) throw error;
-      await delay(1000 * (i + 1)); // 指数退避
-    }
-  }
-}
-```
-
----
-
-### **十、用户体验优化**
-
-#### 10.1 快捷键支持
-**方案**：键盘快捷操作
-
-| 快捷键 | 功能 |
-|--------|------|
-| `Alt+S` | 提取当前文章 |
-| `Alt+B` | 批量下载该作者所有文章 |
-| `Alt+P` | 预览 Markdown |
-| `Alt+D` | 下载 Markdown |
-| `Alt+N` | 推送到 Notion |
-
-**manifest.json 配置**：
-```json
-"commands": {
-  "extract-article": {
-    "suggested_key": {
-      "default": "Alt+S"
-    },
-    "description": "提取当前文章为 Markdown"
-  }
-}
-```
-
-#### 10.2 右键菜单集成
-**方案**：浏览器上下文菜单
-
-```javascript
-// manifest.json
-"permissions": ["contextMenus"],
-
-// background.js
-chrome.runtime.onInstalled.addListener(() => {
-  chrome.contextMenus.create({
-    id: 'extractPage',
-    title: '提取此页面为 Markdown',
-    contexts: ['page', 'link']
-  });
-});
-
-chrome.contextMenus.onClicked.addListener((info, tab) => {
-  if (info.menuItemId === 'extractPage') {
-    extractArticle(tab.id, info.linkUrl || tab.url);
-  }
-});
-```
-
-#### 10.3 可视化进度
-**方案**：批量下载时显示进度
-- 浮动窗口显示当前任务
-- 实时更新下载进度
-
-**UI 设计**：
-```
-┌────────────────────────────────┐
-│ Substack 批量下载               │
-├────────────────────────────────┤
-│ 正在下载: 第 3 / 10 篇          │
-│ ████████░░░░░░░░░░ 30%         │
-│ 当前: 如何构建成功的工程团队...  │
-│ [暂停] [取消]                   │
-└────────────────────────────────┘
-```
-
----
-
-### **十一、高级功能**
-
-#### 11.1 订阅管理
-**方案**：管理关注的作者
-- 收藏喜欢的 Substack 作者
-- 一键查看所有作者的新文章
-- 类似 RSS 阅读器的体验
-
-**数据结构**：
-```javascript
-const subscriptions = [
-  {
-    author: 'John Doe',
-    url: 'https://author.substack.com',
-    lastCheck: '2026-01-29',
-    newArticles: 3,
-    autoDownload: true
-  }
-];
-```
-
-#### 11.2 翻译功能
-**方案**：集成翻译 API
-- 自动翻译英文文章为中文
-- 在 Markdown 中保留双语对照
-- 使用 DeepL/Google Translate
-
-**翻译结果格式**：
-```markdown
-## 原文（English）
-The engineering culture is...
-
-## 译文（中文）
-工程文化是...
-```
-
-#### 11.3 文章关联分析
-**方案**：分析文章间的引用关系
-- 提取"推荐阅读"链接
-- 生成文章关系图谱
-- 找出相关主题文章
-
-**可视化**：
-```javascript
-// 使用 D3.js 或 Cytoscape.js
-const graph = {
-  nodes: [{ id: 'article-1', label: '...' }],
-  edges: [{ source: 'article-1', target: 'article-2' }]
-};
-```
-
----
-
-### **十二、商业价值方向**
-
-#### 12.1 付费内容支持
-**方案**：登录状态提取
-- 用户登录 Substack 后
-- 插件可提取付费内容
-- 保存到本地备份
-
-**注意事项**：
-- 仅提取用户已订阅的内容
-- 遵守服务条款
-- 不提供破解功能
-
-#### 12.2 Newsletter 转 RSS
-**方案**：为没有 RSS 的 Substack 生成 RSS feed
-- 本地生成 RSS XML
-- 可导入 RSS 阅读器
-
-**RSS 格式**：
-```xml
-<?xml version="1.0" encoding="UTF-8"?>
-<rss version="2.0">
-  <channel>
-    <title>Author Name</title>
-    <item>
-      <title>Article Title</title>
-      <link>https://...</link>
-      <description>...</description>
-      <pubDate>...</pubDate>
-    </item>
-  </channel>
-</rss>
-```
-
----
-
-## 🎯 实施优先级
-
-### 🔥 高优先级（立即开始）
-| 功能 | 价值 | 复杂度 | 预估工作量 |
-|------|------|--------|-----------|
-| 图片本地化 | ⭐⭐⭐⭐⭐ | ⭐⭐⭐ | 2-3天 |
-| 自定义模板 | ⭐⭐⭐⭐ | ⭐⭐ | 1-2天 |
-| 批量下载 | ⭐⭐⭐⭐⭐ | ⭐⭐⭐⭐ | 3-5天 |
-| Notion 集成 | ⭐⭐⭐⭐⭐ | ⭐⭐⭐ | 2-3天 |
-| Obsidian 集成 | ⭐⭐⭐⭐ | ⭐⭐ | 1-2天 |
-
-**小计**：9-15 天
-
-### 🌟 中优先级（近期规划）
-| 功能 | 价值 | 复杂度 | 预估工作量 |
-|------|------|--------|-----------|
-| 多平台支持 (Medium, Ghost) | ⭐⭐⭐⭐ | ⭐⭐⭐⭐ | 5-7天 |
-| 标签与分类 | ⭐⭐⭐⭐ | ⭐⭐ | 1-2天 |
-| 快捷键 + 右键菜单 | ⭐⭐⭐ | ⭐ | 0.5-1天 |
-| 全文搜索 | ⭐⭐⭐⭐ | ⭐⭐⭐ | 2-3天 |
-| WebDAV 支持 | ⭐⭐⭐ | ⭐⭐⭐ | 2-3天 |
-| PDF 导出 | ⭐⭐⭐ | ⭐⭐ | 1-2天 |
-
-**小计**：11.5-18 天
-
-### 💡 低优先级（长期方向）
-| 功能 | 价值 | 复杂度 | 预估工作量 |
-|------|------|--------|-----------|
-| AI 摘要 | ⭐⭐⭐ | ⭐⭐⭐ | 2-3天（需API成本） |
-| 翻译功能 | ⭐⭐ | ⭐⭐⭐ | 2-3天 |
-| 订阅管理 | ⭐⭐⭐⭐ | ⭐⭐⭐⭐ | 5-7天 |
-| 文章关系图谱 | ⭐⭐ | ⭐⭐⭐⭐⭐ | 7-10天 |
-| 开放 API | ⭐⭐⭐ | ⭐⭐ | 1-2天 |
-| 调试面板 | ⭐⭐ | ⭐⭐ | 1-2天 |
-
-**小计**：18-27 天
-
----
-
-## 📋 第一步行动建议
-
-### 方案 A：核心功能增强（推荐）
-**目标**：打造最强单篇文章提取体验
-
-**实施顺序**：
-1. 图片本地化（2-3天）
-2. 自定义模板（1-2天）
-3. Notion/Obsidian 一键推送（2-3天）
-
-**成果**：用户体验显著提升，满足 80% 核心需求
-
-### 方案 B：批量处理能力
-**目标**：解决备份整个订阅源的刚需
-
-**实施顺序**：
-1. 批量下载功能（3-5天）
-2. 进度可视化（1天）
-3. WebDAV 云存储（2-3天）
-
-**成果**：差异化功能，吸引深度用户
-
-### 方案 C：平台扩展
-**目标**：从 Substack 工具升级为通用工具
-
-**实施顺序**：
-1. 重构为适配器架构（2-3天）
-2. 实现 Medium 提取器（2-3天）
-3. 实现 Ghost 提取器（1-2天）
-
-**成果**：用户群体扩大 5-10 倍
-
----
-
-## 🛠️ 技术债务清理
-
-### 当前需要优化的点
-1. **代码模块化**：将 content.js 拆分为多个模块
-2. **错误处理**：添加更详细的错误日志
-3. **测试覆盖**：添加单元测试和 E2E 测试
-4. **类型安全**：考虑迁移到 TypeScript
-
----
-
-## 📝 版本规划
-
-### v1.1（下一版本）
-- 图片本地化
-- 自定义模板
-- Notion 集成
-
-### v1.2
-- 批量下载
-- Obsidian 集成
-- 快捷键支持
-
-### v1.3
-- 多平台支持（Medium）
-- 全文搜索
-- 标签分类
-
-### v2.0
-- 订阅管理
-- 自动同步
-- RSS 生成
-
----
-
-**文档生成时间**：2026-02-04
-**最后更新**：2026-02-04
+**文档更新时间**：2026-02-04
+**状态**：已整合 UI/UX 重构与 PDF 导出方案
