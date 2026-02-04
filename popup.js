@@ -208,6 +208,48 @@ document.addEventListener('DOMContentLoaded', async () => {
             };
           }
 
+          // 将 HTML 转换为 Markdown 格式（保留链接和格式）
+          function htmlToMarkdown(element) {
+            const clone = element.cloneNode(true);
+            const processNode = (node) => {
+              if (node.nodeType === Node.TEXT_NODE) {
+                return node.textContent;
+              }
+
+              if (node.nodeType !== Node.ELEMENT_NODE) {
+                return '';
+              }
+
+              const tag = node.tagName.toLowerCase();
+              const children = Array.from(node.childNodes).map(processNode).join('');
+
+              switch (tag) {
+                case 'a':
+                  const href = node.getAttribute('href') || '';
+                  const text = children.trim();
+                  // 跳过按钮类链接
+                  if (node.classList.contains('button') || href.includes('utm_source')) {
+                    return text;
+                  }
+                  return href ? `[${text}](${href})` : text;
+                case 'strong':
+                case 'b':
+                  return `**${children}**`;
+                case 'em':
+                case 'i':
+                  return `*${children}*`;
+                case 'code':
+                  return `\`${children}\``;
+                case 'br':
+                  return '\n';
+                default:
+                  return children;
+              }
+            };
+
+            return processNode(clone).trim();
+          }
+
           // 从 DOM 提取文章内容
           function extractArticleContent() {
             console.log('[Injected] 提取文章内容...');
@@ -278,7 +320,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 console.log('[Injected] 找到图片:', images.length, '张');
               }
 
-              // 处理文本内容
+              // 处理文本内容（使用 htmlToMarkdown 保留格式）
               const text = el.textContent?.trim();
 
               if (tagName === 'h2' && text && text.length > 3) {
@@ -294,14 +336,19 @@ document.addEventListener('DOMContentLoaded', async () => {
                   skipCount++;
                   return;
                 }
-                sections.push({ type: 'paragraph', content: text });
+                // 使用 htmlToMarkdown 保留链接和格式
+                const markdown = htmlToMarkdown(el);
+                sections.push({ type: 'paragraph', content: markdown });
               } else if (tagName === 'ul' || tagName === 'ol') {
-                const items = Array.from(el.querySelectorAll('li')).map(li => li.textContent?.trim() || '');
+                // 对列表项也使用 htmlToMarkdown
+                const items = Array.from(el.querySelectorAll('li')).map(li => htmlToMarkdown(li)).filter(text => text.length > 0);
                 if (items.length > 0 && items.some(i => i.length > 0)) {
                   sections.push({ type: 'list', content: items, ordered: tagName === 'ol' });
                 }
               } else if (tagName === 'blockquote' && text && text.length >= 10) {
-                sections.push({ type: 'blockquote', content: text });
+                // 对引用也使用 htmlToMarkdown
+                const markdown = htmlToMarkdown(el);
+                sections.push({ type: 'blockquote', content: markdown });
               } else if (tagName === 'pre' && text && text.length >= 10) {
                 sections.push({ type: 'code', content: text });
               }
