@@ -434,10 +434,14 @@ document.addEventListener('DOMContentLoaded', async () => {
         const uniqueUrls = [...new Set(urls)];
 
         // 2. Download images
-        let downloadCount = 0;
-        for (const url of uniqueUrls) {
+        extractBtn.innerHTML = `Downloading ${uniqueUrls.length} images...`;
+
+        const downloadPromises = uniqueUrls.map(async (url, index) => {
+           // Update progress (approximate since parallel)
            downloadCount++;
-           extractBtn.innerHTML = `Downloading images (${downloadCount}/${uniqueUrls.length})...`;
+           if (downloadCount % 5 === 0 || downloadCount === uniqueUrls.length) {
+              extractBtn.innerHTML = `Downloading images (${downloadCount}/${uniqueUrls.length})...`;
+           }
 
            const blob = await fetchImage(url);
            if (blob) {
@@ -448,11 +452,13 @@ document.addEventListener('DOMContentLoaded', async () => {
              else if (blob.type === 'image/webp') ext = 'webp';
              else if (blob.type === 'image/svg+xml') ext = 'svg';
 
-             const imgName = `image-${downloadCount}.${ext}`;
+             const imgName = `image-${index + 1}.${ext}`;
              assetsFolder.file(imgName, blob);
              imageMap.set(url, `assets/${imgName}`);
            }
-        }
+        });
+
+        await Promise.all(downloadPromises);
 
         // 3. Create modified data with local paths
         const localData = JSON.parse(JSON.stringify(articleData));
@@ -481,6 +487,7 @@ document.addEventListener('DOMContentLoaded', async () => {
            filename: zipName,
            saveAs: true
         });
+        setTimeout(() => URL.revokeObjectURL(url), 10000);
 
       } else {
         // Standard Markdown Mode
@@ -493,6 +500,7 @@ document.addEventListener('DOMContentLoaded', async () => {
           filename: filename,
           saveAs: true
         });
+        setTimeout(() => URL.revokeObjectURL(url), 10000);
       }
 
       showStatus('✅ Downloaded!', 'success');
