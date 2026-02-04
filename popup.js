@@ -312,6 +312,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (meta?.authors?.length) {
       md += `**Author**: ${meta.authors.map(a => a.name).join(', ')}\n\n`;
     }
+    if (meta?.publisher?.name) {
+      md += `**Publisher**: ${meta.publisher.name}\n\n`;
+    }
     if (meta?.datePublished) {
       try {
          md += `**Date**: ${new Date(meta.datePublished).toLocaleDateString()}\n\n`;
