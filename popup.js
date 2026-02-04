@@ -574,16 +574,58 @@ document.addEventListener('DOMContentLoaded', async () => {
       await chrome.scripting.executeScript({
         target: { tabId: tab.id },
         func: () => {
+          console.log('[PDF Export] Starting PDF export...');
+
+          // Check page structure
+          const entry = document.getElementById('entry');
+          const article = document.querySelector('article');
+          const bodyMarkup = document.querySelector('.body.markup');
+          const modalViewer = document.querySelector('[class*="modalViewer"]');
+          const readerNavRoot = document.querySelector('.reader-nav-root');
+          const readerNavPage = document.querySelector('.reader-nav-page');
+          const paywall = document.querySelector('.paywall');
+
+          console.log('[PDF Export] Page structure:', {
+            hasEntry: !!entry,
+            hasArticle: !!article,
+            hasBodyMarkup: !!bodyMarkup,
+            bodyMarkupLength: bodyMarkup?.textContent?.length || 0,
+            bodyMarkupPreview: bodyMarkup?.textContent?.substring(0, 100),
+            hasModalViewer: !!modalViewer,
+            modalViewerClasses: modalViewer?.className,
+            modalViewerPosition: modalViewer ? window.getComputedStyle(modalViewer).position : null,
+            hasReaderNavRoot: !!readerNavRoot,
+            hasReaderNavPage: !!readerNavPage,
+            hasPaywall: !!paywall,
+            articleInModal: modalViewer?.contains(article),
+            readerNavContainsModal: readerNavRoot?.contains(modalViewer),
+            url: window.location.href
+          });
+
+          // Log each element individually for better visibility
+          console.log('[PDF Export] Element details:');
+          console.log('  entry:', entry ? { id: entry.id, className: entry.className } : null);
+          console.log('  article:', article ? { className: article.className } : null);
+          console.log('  modalViewer:', modalViewer ? { className: modalViewer.className, position: window.getComputedStyle(modalViewer).position } : null);
+          console.log('  readerNavRoot:', readerNavRoot ? { className: readerNavRoot.className } : null);
+          console.log('  readerNavPage:', readerNavPage ? { className: readerNavPage.className } : null);
+
           // Create style element for print optimization
           const styleId = 'substack-print-style';
           let style = document.getElementById(styleId);
 
-          if (!style) {
-            style = document.createElement('style');
-            style.id = styleId;
-            style.textContent = `
+          // Always remove old style and recreate to ensure fresh styles
+          if (style) {
+            console.log('[PDF Export] Removing old print styles...');
+            style.remove();
+          }
+
+          console.log('[PDF Export] Creating new print styles...');
+          style = document.createElement('style');
+          style.id = styleId;
+          style.textContent = `
               @media print {
-                /* Hide distractions */
+                /* Hide distractions - use specific selectors to avoid hiding article content */
                 nav, header, footer, aside,
                 #comments, .post-comments, .comments-section,
                 .subscribe-widget, .subscription-widget, .subscribe-footer,
@@ -594,14 +636,79 @@ document.addEventListener('DOMContentLoaded', async () => {
                 .dock,
                 .button-wrapper,
                 .secondary-actions,
-                .pencraft.pc-display-flex {
+                /* Logged-in page elements */
+                .reader-nav-page,
+                .paywall,
+                [class*="sidebar"][class*="fixed"],
+                [class*="pc-position-fixed"],
+                .reader-onboarding-modal,
+                [class*="modal-uY8Fz4"],
+                /* Audio/video players */
+                audio, video,
+                [class*="player"],
+                [class*="audio"],
+                [class*="video"],
+                /* Viewers and containers (keep modalViewer) */
+                [class*="viewer"]:not([class*="modalViewer"]) {
+                  display: none !important;
+                }
+
+                /* Hide ALL buttons - stronger rules */
+                button,
+                [class*="button"],
+                [role="button"],
+                [class*="btn"],
+                .upgrade-btn,
+                .cta-button,
+                [class*="subscribe"],
+                [class*="upgrade"] {
+                  display: none !important;
+                }
+
+                /* Hide button containers */
+                [class*="buttonWrapper"],
+                [class*="button-wrapper"],
+                [class*="action"],
+                .actions,
+                .toolbar {
                   display: none !important;
                 }
 
                 /* Layout overrides */
-                body, html {
+                body, html, #entry {
                   background-color: #fff !important;
                   background: #fff !important;
+                  height: auto !important;
+                  min-height: auto !important;
+                  overflow: visible !important;
+                  display: block !important;
+                }
+
+                /* Fix modalViewer - convert from fixed to static for printing */
+                [class*="modalViewer"] {
+                  position: static !important;
+                  display: block !important;
+                  width: 100% !important;
+                  min-width: 100% !important;
+                  height: auto !important;
+                  min-height: auto !important;
+                  max-height: none !important;
+                  max-width: none !important;
+                  overflow: visible !important;
+                  z-index: auto !important;
+                }
+
+                /* Ensure all pencraft containers in the modal are visible */
+                [class*="modalViewer"] .pencraft {
+                  display: block !important;
+                  position: static !important;
+                }
+
+                /* Force article to be visible */
+                article {
+                  display: block !important;
+                  position: static !important;
+                  width: 100% !important;
                   height: auto !important;
                   overflow: visible !important;
                 }
@@ -613,6 +720,13 @@ document.addEventListener('DOMContentLoaded', async () => {
                   padding: 0 !important;
                   border: none !important;
                   box-shadow: none !important;
+                }
+
+                /* Force body content to be visible */
+                .body.markup {
+                  display: block !important;
+                  visibility: visible !important;
+                  opacity: 1 !important;
                 }
 
                 /* Typography */
@@ -640,14 +754,128 @@ document.addEventListener('DOMContentLoaded', async () => {
                   border-left: 3px solid #000 !important;
                   padding-left: 1em !important;
                 }
+
+                /* Remove all borders and shadows */
+                *, *::before, *::after {
+                  box-shadow: none !important;
+                  text-shadow: none !important;
+                }
+
+                /* Remove borders from containers */
+                [class*="modalViewer"],
+                [class*="container"],
+                [class*="viewer"],
+                article,
+                .post {
+                  border: none !important;
+                  outline: none !important;
+                  box-shadow: none !important;
+                  border-radius: 0 !important;
+                }
+
+                /* Hide bottom sections - likes, comments, restacks */
+                [class*="like"],
+                [class*="comment"],
+                [class*="restack"],
+                [class*="share"],
+                .post-footer,
+                .footer,
+                [class*="interaction"],
+                [class*="reaction"],
+                .facepile,
+                [class*="avatar"] {
+                  display: none !important;
+                }
+
+                /* Hide subscribe sections at bottom */
+                [class*="subscribe"],
+                .upgrade-btn,
+                .cta-section {
+                  display: none !important;
+                }
               }
             `;
             document.head.appendChild(style);
+            console.log('[PDF Export] Print styles added to DOM');
+
+          // Check which elements will be hidden
+          console.log('[PDF Export] Checking visibility:');
+          console.log('  - readerNavPage will be hidden:', readerNavPage?.matches('.reader-nav-page, .paywall, [class*="sidebar"][class*="fixed"], [class*="pc-position-fixed"], .reader-onboarding-modal, [class*="modal-uY8Fz4"]'));
+          console.log('  - paywall will be hidden:', paywall?.matches('.reader-nav-page, .paywall, [class*="sidebar"][class*="fixed"], [class*="pc-position-fixed"], .reader-onboarding-modal, [class*="modal-uY8Fz4"]'));
+          console.log('  - modalViewer will be hidden:', modalViewer?.matches('.reader-nav-page, .paywall, [class*="sidebar"][class*="fixed"], [class*="pc-position-fixed"], .reader-onboarding-modal, [class*="modal-uY8Fz4"]'));
+
+          // Check parent chain for visibility issues
+          if (article) {
+            console.log('[PDF Export] Checking article parent chain:');
+            let current = article;
+            let depth = 0;
+            while (current && depth < 20) {
+              const computed = window.getComputedStyle(current);
+              const isVisible = computed.display !== 'none' && computed.visibility !== 'hidden' && computed.opacity !== '0';
+              console.log(`  [${depth}] ${current.tagName}.${current.className?.substring(0, 30)}: display=${computed.display}, visibility=${computed.visibility}, opacity=${computed.opacity}, position=${computed.position}, visible=${isVisible}`);
+              if (current === document.body) break;
+              current = current.parentElement;
+              depth++;
+            }
           }
 
+          // Check if styles were actually applied
+          const styleElement = document.getElementById(styleId);
+          console.log('[PDF Export] Style element in DOM:', !!styleElement);
+          console.log('[PDF Export] Style content length:', styleElement?.textContent?.length || 0);
+
+          // Check body content before print
+          console.log('[PDF Export] Body text content length:', document.body.textContent?.length || 0);
+          console.log('[PDF Export] Article text content length:', article?.textContent?.length || 0);
+          console.log('[PDF Export] Body markup text content length:', bodyMarkup?.textContent?.length || 0);
+
+          // Verify print styles are in place
+          console.log('[PDF Export] Verifying print styles...');
+          const styleRules = document.styleSheets[0]?.cssRules || [];
+          let foundPrintRule = false;
+          for (let i = 0; i < styleRules.length; i++) {
+            if (styleRules[i]?.cssText?.includes('@media print')) {
+              foundPrintRule = true;
+              console.log('[PDF Export] Found @media print rule');
+              break;
+            }
+          }
+          console.log('[PDF Export] Print rule found:', foundPrintRule);
+
+          // Temporary: Apply print styles to screen for testing (remove @media print wrapper)
+          console.log('[PDF Export] Applying test styles to screen...');
+          const testStyleId = 'substack-print-test-style';
+          let testStyle = document.getElementById(testStyleId);
+          if (testStyle) testStyle.remove();
+
+          testStyle = document.createElement('style');
+          testStyle.id = testStyleId;
+          // Extract print styles without @media wrapper
+          testStyle.textContent = styleElement.textContent.replace(/@media print\s*{/, '').replace(/}\s*$/, '');
+          document.head.appendChild(testStyle);
+
+          console.log('[PDF Export] Test styles applied - check if article is now visible');
+          console.log('[PDF Export] ModalViewer position now:', window.getComputedStyle(modalViewer).position);
+
+          // Function to restore page
+          const restorePage = () => {
+            console.log('[PDF Export] Restoring page state...');
+            const testStyleToRemove = document.getElementById(testStyleId);
+            if (testStyleToRemove) {
+              testStyleToRemove.remove();
+              console.log('[PDF Export] ✓ Test styles removed, page restored');
+            }
+          };
+
           // Trigger print
+          console.log('[PDF Export] Triggering window.print() in 100ms...');
           setTimeout(() => {
+            console.log('[PDF Export] Calling window.print() now');
             window.print();
+            console.log('[PDF Export] window.print() called');
+
+            // Restore page after print dialog closes (delay to ensure dialog is handled)
+            setTimeout(restorePage, 1000);
           }, 100);
         }
       });
