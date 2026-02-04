@@ -184,6 +184,12 @@ document.querySelector('.body.markup')
 
 ## 📊 版本历史
 
+### v2.0.3 (2026-02-04)
+- 🐛 **修复**：PDF 打印时标题上方的空白区域（~100px）
+- 🔧 **改进**：重置 modalViewer 和 article 的 padding/margin
+- 🔧 **改进**：打印时标题直接位于页面顶部
+- 🔍 **分析**：使用 Chrome DevTools MCP 工具定位问题根源
+
 ### v2.0.2 (2026-02-04)
 - 🐛 **修复**：图片保留在文章中的原始位置
 - ✨ **改进**：使用 `.body.markup` 容器提取内容
@@ -300,5 +306,5 @@ MIT License
 ---
 
 **最后更新**: 2026-02-04
-**当前版本**: v2.0.2
+**当前版本**: v2.0.3
 **Happy Extracting! 🚀**

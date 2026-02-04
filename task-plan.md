@@ -187,6 +187,7 @@ chrome-plugin-substack/
 1.  ✅ **UI/UX 重构**: 实现 "Substack 原生风" 界面（白底、橙色按钮、衬线体）。
 2.  ✅ **YAML Frontmatter**: 添加标准元数据头，方便 Obsidian/Notion 索引。
 3.  ✅ **PDF 导出 (Lite)**: 实现基于 CSS 的原生打印优化方案。
+    - ✅ **v2.0.3 修复**: 使用 Chrome DevTools MCP 工具分析并修复打印时标题上方 ~100px 空白问题（modalViewer 和 article 的 padding/margin 重置）
 4.  ✅ **剪贴板支持**: 添加 "Copy Markdown" 按钮，解决高频粘贴需求。
 5.  ✅ **脚注支持**: 解析 `<sup>` 和锚点，生成标准脚注。
 6.  ✅ **自定义文件名**: 允许用户配置命名规则（如 `yyyy-MM-dd-Title.md`）。
@@ -220,5 +221,55 @@ chrome-plugin-substack/
 
 ---
 
+## 📋 更新日志
+
+### 2026-02-04 - v2.0.3
+**分支**: `fix/pdf-print-top-spacing`
+
+#### 问题诊断
+使用 Chrome DevTools MCP 工具分析打印页面布局，发现：
+- `modalViewerInner`: `padding: 12px`
+- `modalViewer` 内部子元素: `paddingTop: 88px` ⚠️ 主要问题源
+- `article`: `paddingTop: 16px`
+- 累计空白: ~101px
+
+#### 修复内容
+- 重置 `[class*="modalViewer"]` 及其所有子元素的 padding/margin
+- 重置 `article` 元素的 padding/margin
+- 重置 `article > *:first-child` 的顶部间距
+- 重置 `h1` 的 margin-top 和 padding-top
+
+#### 技术细节
+```css
+/* 关键修复规则 */
+[class*="modalViewer"] {
+  padding: 0 !important;
+  margin: 0 !important;
+}
+
+[class*="modalViewer"] [class*="pc-padding"] {
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+  /* ... */
+}
+
+article {
+  padding: 0 !important;
+  margin: 0 !important;
+}
+
+article > *:first-child {
+  margin-top: 0 !important;
+  padding-top: 0 !important;
+}
+
+h1 {
+  margin-top: 0 !important;
+  padding-top: 0 !important;
+}
+```
+
+---
+
 **文档更新时间**：2026-02-04
-**状态**：已整合 UI/UX 重构与 PDF 导出方案
+**状态**：已整合 UI/UX 重构与 PDF 导出方案 | v2.0.3 已修复 PDF 打印空白问题
