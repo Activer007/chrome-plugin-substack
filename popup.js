@@ -87,19 +87,163 @@ document.addEventListener('DOMContentLoaded', async () => {
             const h1 = document.querySelector('h1');
             if (h1) title = h1.textContent.trim();
 
-            const authorLink = document.querySelector('.byline a') ||
-                               Array.from(document.querySelectorAll('a')).find(a => a.href?.includes('/@'));
-            const authorName = authorLink?.textContent?.trim() || '';
+            // 智能查找当前文章链接 - 用于定位作者和发布者
+            let currentPostLink = null;
+            const currentUrl = window.location.href;
 
+            // 策略1: 直接匹配当前 URL 的 /p/ 链接
+            const urlMatch = currentUrl.match(/\/p\/([a-z0-9-]+)/);
+            if (urlMatch) {
+              const postId = urlMatch[1];
+              currentPostLink = Array.from(document.querySelectorAll('a')).find(a =>
+                a.href && a.href.includes(`/p/${postId}`)
+              );
+            }
+
+            // 策略2: 如果没找到，尝试通过标题匹配
+            if (!currentPostLink && title) {
+              const titleFromUrl = title.split(' - ')[0].split(' |')[0].trim();
+              currentPostLink = Array.from(document.querySelectorAll('a[href*="/p/"]')).find(a => {
+                const linkText = a.textContent?.trim() || '';
+                return linkText === titleFromUrl && linkText.length > 10;
+              });
+            }
+
+            // 策略3: 选择文本最长的非推荐文章链接
+            if (!currentPostLink) {
+              const mainPostLinks = Array.from(document.querySelectorAll('a[href*="/p/"]')).filter(a => {
+                return !a.className.includes('reader2-inbox-post') &&
+                       !a.className.includes('linkRow') &&
+                       !a.href.includes('utm_source');
+              });
+              currentPostLink = mainPostLinks.reduce((longest, current) => {
+                const currentText = current.textContent?.trim() || '';
+                const longestText = longest.textContent?.trim() || '';
+                return currentText.length > longestText.length ? current : longest;
+              }, mainPostLinks[0]);
+            }
+
+            // 提取作者 - 从文章链接附近查找
+            let authorLink = null;
+            let authorName = '';
+
+            // 优先使用 .byline（普通文章页面）
+            const bylineLink = document.querySelector('.byline a');
+            if (bylineLink) {
+              authorLink = bylineLink;
+              authorName = bylineLink.textContent?.trim() || '';
+            }
+
+            // 如果没找到 .byline，从文章链接的父容器中查找
+            if (!authorLink && currentPostLink && currentPostLink.parentElement) {
+              // 向上查找 3 层
+              let container = currentPostLink.parentElement;
+              for (let i = 0; i < 3 && container; i++) {
+                const nearbyAuthor = Array.from(container.querySelectorAll('a')).find(a =>
+                  a.href && a.href.includes('/@') &&
+                  a.textContent.trim().length > 2 &&
+                  a.textContent.trim().length < 100
+                );
+                if (nearbyAuthor) {
+                  authorLink = nearbyAuthor;
+                  authorName = nearbyAuthor.textContent?.trim() || '';
+                  break;
+                }
+                container = container.parentElement;
+              }
+            }
+
+            // 最后的回退：全局搜索 /@ 链接（但排除侧边栏推荐）
+            if (!authorName) {
+              const allAuthorLinks = Array.from(document.querySelectorAll('a')).filter(a => {
+                const href = a.href || '';
+                const text = a.textContent?.trim() || '';
+                return href.includes('/@') && text.length > 2 && text.length < 100;
+              });
+
+              // 过滤掉可能在侧边栏的作者
+              const validAuthors = allAuthorLinks.filter(a => {
+                const parent = a.parentElement;
+                if (!parent) return true;
+                // 排除包含 "reader2-inbox-post" 或 "linkRow" 的容器
+                return !parent.closest('.reader2-inbox-post') && !parent.closest('.linkRow');
+              });
+
+              if (validAuthors.length > 0) {
+                authorLink = validAuthors[0];
+                authorName = validAuthors[0].textContent?.trim() || '';
+              }
+            }
+
+            // 提取日期 - 优先使用 <time> 标签
+            let dateText = '';
             const timeEl = document.querySelector('time');
-            const dateText = timeEl ? timeEl.getAttribute('datetime') || timeEl.textContent : '';
+            if (timeEl) {
+              dateText = timeEl.getAttribute('datetime') || timeEl.textContent;
+            } else {
+              // 回退：使用正则表达式查找 "Jan 29, 2026" 格式的日期
+              const dateRegex = /^[A-Z][a-z]{2}\s+\d{1,2},\s+\d{4}$/;
+              const allElements = Array.from(document.querySelectorAll('*'));
+              const dateElement = allElements.find(el => {
+                const text = el.textContent?.trim();
+                return text && dateRegex.test(text) && el.children.length === 0;
+              });
+              if (dateElement) {
+                dateText = dateElement.textContent?.trim() || '';
+              }
+            }
+
+            // 提取发布者名称
+            let pubName = '';
+            let pubUrl = '';
+
+            if (currentPostLink && currentPostLink.href) {
+              const urlMatch = currentPostLink.href.match(/https?:\/\/([^\/]+)\//);
+              if (urlMatch) {
+                const domain = urlMatch[1];
+                // 找指向该域名的发布者链接
+                const pubLinks = Array.from(document.querySelectorAll('a')).filter(a =>
+                  a.href && a.href.includes(domain) && !a.href.includes('/p/')
+                );
+
+                // 过滤掉订阅按钮和非正式链接
+                const validLinks = pubLinks.filter(a => {
+                  const text = a.textContent?.trim().toLowerCase() || '';
+                  const href = a.href || '';
+
+                  // 排除按钮和订阅相关链接
+                  if (text.includes('subscribe') || text.includes('upgrade') ||
+                      text.includes('sign in') || text.includes('already a') ||
+                      href.includes('/subscribe') || href.includes('/sign-in')) {
+                    return false;
+                  }
+
+                  // 文本长度合理（3-100字符），非空
+                  const textLength = a.textContent?.trim().length || 0;
+                  return textLength >= 3 && textLength <= 100;
+                });
+
+                // 选择文本最短的作为发布者链接
+                const pubLink = validLinks.reduce((shortest, current) => {
+                  const currentText = current.textContent?.trim() || '';
+                  const shortestText = shortest.textContent?.trim() || '';
+                  if (!shortestText) return current;
+                  return currentText.length < shortestText.length ? current : shortest;
+                }, validLinks[0]);
+
+                if (pubLink) {
+                  pubName = pubLink.textContent?.trim() || '';
+                  pubUrl = pubLink.href || '';
+                }
+              }
+            }
 
             return {
               title,
               description: '',
               datePublished: dateText,
               authors: authorName ? [{ name: authorName, url: authorLink?.href || '' }] : [],
-              publisher: { name: '', url: '' },
+              publisher: { name: pubName, url: pubUrl },
               image: '',
               url: window.location.href
             };
@@ -833,8 +977,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                   left: -9999px !important;
                 }
 
-                /* Force hide spans that contain buttons */
-                span[data-state] {
+                /* Force hide spans that contain buttons (but preserve author links) */
+                span[data-state]:not(:has(a[href*="/@"])) {
                   display: none !important;
                 }
 
@@ -890,6 +1034,25 @@ document.addEventListener('DOMContentLoaded', async () => {
                 a[class*="image"]:not([role="button"]),
                 a.image-link {
                   display: inline-block !important;
+                  visibility: visible !important;
+                  opacity: 1 !important;
+                }
+
+                /* CRITICAL: Ensure byline metadata is visible (author, publisher, date) */
+                .byline-wrapper,
+                .byline-wrapper *,
+                .byline-wrapper a,
+                .byline-wrapper div,
+                [class*="meta-EgzBVA"],
+                [class*="byline"] {
+                  display: block !important;
+                  visibility: visible !important;
+                  opacity: 1 !important;
+                  position: static !important;
+                }
+
+                .byline-wrapper .pencraft {
+                  display: flex !important;
                   visibility: visible !important;
                   opacity: 1 !important;
                 }
