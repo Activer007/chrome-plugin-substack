@@ -698,9 +698,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                   z-index: auto !important;
                 }
 
-                /* Ensure all pencraft containers in the modal are visible */
-                [class*="modalViewer"] .pencraft {
-                  display: block !important;
+                /* Ensure all pencraft containers in the modal are visible (but NOT buttons) */
+                [class*="modalViewer"] .pencraft:not(button):not([class*="button"]) {
                   position: static !important;
                 }
 
@@ -791,6 +790,49 @@ document.addEventListener('DOMContentLoaded', async () => {
                 [class*="subscribe"],
                 .upgrade-btn,
                 .cta-section {
+                  display: none !important;
+                }
+
+                /* CRITICAL: Force hide ALL buttons - must be last for highest priority */
+                button,
+                [class*="button"],
+                [class*="iconButton"],
+                [class*="Button"],
+                [role="button"],
+                span[data-state] button,
+                div[data-state] button,
+                .pencraft button,
+                .pencraft[class*="button"],
+                .pencraft[class*="Button"] {
+                  display: none !important;
+                  visibility: hidden !important;
+                  opacity: 0 !important;
+                  width: 0 !important;
+                  height: 0 !important;
+                  overflow: hidden !important;
+                  position: absolute !important;
+                  left: -9999px !important;
+                }
+
+                /* Force hide spans that contain buttons */
+                span[data-state] {
+                  display: none !important;
+                }
+
+                /* Hide top navigation/close buttons area */
+                [class*="pc-padding-12"][class*="pc-mobile-padding-0"] > button {
+                  display: none !important;
+                }
+
+                /* Hide audio players */
+                svg[class*="lucide-chevron"],
+                svg[class*="lucide-play"],
+                svg[class*="lucide-pause"] {
+                  display: none !important;
+                }
+
+                /* Hide specific button containers */
+                .pc-gap-8:has(button) {
                   display: none !important;
                 }
               }
