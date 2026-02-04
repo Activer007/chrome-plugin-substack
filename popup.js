@@ -225,12 +225,28 @@ document.addEventListener('DOMContentLoaded', async () => {
 
               switch (tag) {
                 case 'a':
-                  const href = node.getAttribute('href') || '';
+                  let href = node.getAttribute('href') || '';
                   const text = children.trim();
+
                   // 跳过按钮类链接
-                  if (node.classList.contains('button') || href.includes('utm_source')) {
+                  if (node.classList.contains('button')) {
                     return text;
                   }
+
+                  // 清理 URL 中的跟踪参数，但保留基础链接
+                  if (href.includes('utm_')) {
+                    try {
+                      const url = new URL(href);
+                      // 移除所有 utm_* 参数
+                      Array.from(url.searchParams.keys())
+                        .filter(key => key.startsWith('utm_'))
+                        .forEach(key => url.searchParams.delete(key));
+                      href = url.toString();
+                    } catch (e) {
+                      // 如果 URL 解析失败，保留原始 href
+                    }
+                  }
+
                   return href ? `[${text}](${href})` : text;
                 case 'strong':
                 case 'b':
