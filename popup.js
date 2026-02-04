@@ -87,33 +87,118 @@ document.addEventListener('DOMContentLoaded', async () => {
             const h1 = document.querySelector('h1');
             if (h1) title = h1.textContent.trim();
 
-            const authorLink = document.querySelector('.byline a') ||
-                               Array.from(document.querySelectorAll('a')).find(a => a.href?.includes('/@'));
-            const authorName = authorLink?.textContent?.trim() || '';
+            // 智能查找当前文章链接 - 用于定位作者和发布者
+            let currentPostLink = null;
+            const currentUrl = window.location.href;
 
+            // 策略1: 直接匹配当前 URL 的 /p/ 链接
+            const urlMatch = currentUrl.match(/\/p\/([a-z0-9-]+)/);
+            if (urlMatch) {
+              const postId = urlMatch[1];
+              currentPostLink = Array.from(document.querySelectorAll('a')).find(a =>
+                a.href && a.href.includes(`/p/${postId}`)
+              );
+            }
+
+            // 策略2: 如果没找到，尝试通过标题匹配
+            if (!currentPostLink && title) {
+              const titleFromUrl = title.split(' - ')[0].split(' |')[0].trim();
+              currentPostLink = Array.from(document.querySelectorAll('a[href*="/p/"]')).find(a => {
+                const linkText = a.textContent?.trim() || '';
+                return linkText === titleFromUrl && linkText.length > 10;
+              });
+            }
+
+            // 策略3: 选择文本最长的非推荐文章链接
+            if (!currentPostLink) {
+              const mainPostLinks = Array.from(document.querySelectorAll('a[href*="/p/"]')).filter(a => {
+                return !a.className.includes('reader2-inbox-post') &&
+                       !a.className.includes('linkRow') &&
+                       !a.href.includes('utm_source');
+              });
+              currentPostLink = mainPostLinks.reduce((longest, current) => {
+                const currentText = current.textContent?.trim() || '';
+                const longestText = longest.textContent?.trim() || '';
+                return currentText.length > longestText.length ? current : longest;
+              }, mainPostLinks[0]);
+            }
+
+            // 提取作者 - 从文章链接附近查找
+            let authorLink = null;
+            let authorName = '';
+
+            // 优先使用 .byline（普通文章页面）
+            const bylineLink = document.querySelector('.byline a');
+            if (bylineLink) {
+              authorLink = bylineLink;
+              authorName = bylineLink.textContent?.trim() || '';
+            }
+
+            // 如果没找到 .byline，从文章链接的父容器中查找
+            if (!authorLink && currentPostLink && currentPostLink.parentElement) {
+              // 向上查找 3 层
+              let container = currentPostLink.parentElement;
+              for (let i = 0; i < 3 && container; i++) {
+                const nearbyAuthor = Array.from(container.querySelectorAll('a')).find(a =>
+                  a.href && a.href.includes('/@') &&
+                  a.textContent.trim().length > 2 &&
+                  a.textContent.trim().length < 100
+                );
+                if (nearbyAuthor) {
+                  authorLink = nearbyAuthor;
+                  authorName = nearbyAuthor.textContent?.trim() || '';
+                  break;
+                }
+                container = container.parentElement;
+              }
+            }
+
+            // 最后的回退：全局搜索 /@ 链接（但排除侧边栏推荐）
+            if (!authorName) {
+              const allAuthorLinks = Array.from(document.querySelectorAll('a')).filter(a => {
+                const href = a.href || '';
+                const text = a.textContent?.trim() || '';
+                return href.includes('/@') && text.length > 2 && text.length < 100;
+              });
+
+              // 过滤掉可能在侧边栏的作者
+              const validAuthors = allAuthorLinks.filter(a => {
+                const parent = a.parentElement;
+                if (!parent) return true;
+                // 排除包含 "reader2-inbox-post" 或 "linkRow" 的容器
+                return !parent.closest('.reader2-inbox-post') && !parent.closest('.linkRow');
+              });
+
+              if (validAuthors.length > 0) {
+                authorLink = validAuthors[0];
+                authorName = validAuthors[0].textContent?.trim() || '';
+              }
+            }
+
+            // 提取日期 - 优先使用 <time> 标签
+            let dateText = '';
             const timeEl = document.querySelector('time');
-            const dateText = timeEl ? timeEl.getAttribute('datetime') || timeEl.textContent : '';
+            if (timeEl) {
+              dateText = timeEl.getAttribute('datetime') || timeEl.textContent;
+            } else {
+              // 回退：使用正则表达式查找 "Jan 29, 2026" 格式的日期
+              const dateRegex = /^[A-Z][a-z]{2}\s+\d{1,2},\s+\d{4}$/;
+              const allElements = Array.from(document.querySelectorAll('*'));
+              const dateElement = allElements.find(el => {
+                const text = el.textContent?.trim();
+                return text && dateRegex.test(text) && el.children.length === 0;
+              });
+              if (dateElement) {
+                dateText = dateElement.textContent?.trim() || '';
+              }
+            }
 
-            // 提取发布者名称 - 从文章链接中智能提取
+            // 提取发布者名称
             let pubName = '';
             let pubUrl = '';
 
-            // 策略：找到主文章的 /p/ 链接，从中提取发布者域名，然后找对应的发布者链接
-            const mainPostLinks = Array.from(document.querySelectorAll('a[href*="/p/"]')).filter(a => {
-              return !a.className.includes('reader2-inbox-post') &&
-                     !a.className.includes('linkRow') &&
-                     !a.href.includes('utm_source');
-            });
-
-            // 选择文本最长的作为主文章链接
-            const mainPostLink = mainPostLinks.reduce((longest, current) => {
-              const currentText = current.textContent?.trim() || '';
-              const longestText = longest.textContent?.trim() || '';
-              return currentText.length > longestText.length ? current : longest;
-            }, mainPostLinks[0]);
-
-            if (mainPostLink && mainPostLink.href) {
-              const urlMatch = mainPostLink.href.match(/https?:\/\/([^\/]+)\//);
+            if (currentPostLink && currentPostLink.href) {
+              const urlMatch = currentPostLink.href.match(/https?:\/\/([^\/]+)\//);
               if (urlMatch) {
                 const domain = urlMatch[1];
                 // 找指向该域名的发布者链接
