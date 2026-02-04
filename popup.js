@@ -165,12 +165,24 @@ document.addEventListener('DOMContentLoaded', async () => {
                   a.href && a.href.includes(domain) && !a.href.includes('/p/')
                 );
 
-                // 选择文本长度合理且最短的
+                // 过滤掉订阅按钮和非正式链接
                 const validLinks = pubLinks.filter(a => {
-                  const text = a.textContent?.trim() || '';
-                  return text.length >= 5 && text.length <= 100;
+                  const text = a.textContent?.trim().toLowerCase() || '';
+                  const href = a.href || '';
+
+                  // 排除按钮和订阅相关链接
+                  if (text.includes('subscribe') || text.includes('upgrade') ||
+                      text.includes('sign in') || text.includes('already a') ||
+                      href.includes('/subscribe') || href.includes('/sign-in')) {
+                    return false;
+                  }
+
+                  // 文本长度合理（3-100字符），非空
+                  const textLength = a.textContent?.trim().length || 0;
+                  return textLength >= 3 && textLength <= 100;
                 });
 
+                // 选择文本最短的作为发布者链接
                 const pubLink = validLinks.reduce((shortest, current) => {
                   const currentText = current.textContent?.trim() || '';
                   const shortestText = shortest.textContent?.trim() || '';
