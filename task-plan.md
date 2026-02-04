@@ -196,7 +196,7 @@ chrome-plugin-substack/
 *预计耗时：1 周*
 
 1.  ✅ **图片本地化 (ZIP)**: 使用 JSZip 打包图片和 Markdown，实现真正离线阅读。
-2.  **Obsidian 一键保存**: 利用 URI Scheme 直接写入 Obsidian Vault。
+2.  ✅ **Obsidian 一键保存**: 利用 URI Scheme 直接写入 Obsidian Vault。
 3.  **智能内容清理**: 增加"纯净模式"选项，移除推广干扰。
 4.  **预览界面**: 下载前预览并确认内容，支持 Monaco Editor 高亮。
 
