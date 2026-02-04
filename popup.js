@@ -8,6 +8,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   const extractBtn = document.getElementById('extractBtn');
   const copyBtn = document.getElementById('copyBtn');
   const pdfBtn = document.getElementById('pdfBtn');
+  const obsidianBtn = document.getElementById('obsidianBtn');
   const previewBtn = document.getElementById('previewBtn');
   const previewContainer = document.getElementById('previewContainer');
   const markdownPreview = document.getElementById('markdownPreview');
@@ -635,9 +636,36 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   }
 
+  async function saveToObsidian() {
+    if (!articleData) return;
+    try {
+      const md = generateMarkdown(articleData);
+      const filename = generateFilename(articleData).replace(/\.md$/, '');
+
+      // 1. Copy content to clipboard (bypassing URL length limits)
+      await navigator.clipboard.writeText(md);
+
+      // 2. Open Obsidian URI
+      // clipboard=true tells Obsidian to use clipboard content for the new note
+      const uri = `obsidian://new?file=${encodeURIComponent(filename)}&clipboard=true`;
+      window.open(uri, '_self');
+
+      showStatus('✅ Sent to Obsidian!', 'success');
+      setTimeout(() => {
+        if (statusEl.textContent.includes('Obsidian')) {
+           showStatus('Article detected', 'success');
+        }
+      }, 3000);
+    } catch (e) {
+      console.error(e);
+      showStatus('Obsidian Error: ' + e.message, 'error');
+    }
+  }
+
   extractBtn.addEventListener('click', extractAndDownload);
   copyBtn.addEventListener('click', copyToClipboard);
   pdfBtn.addEventListener('click', exportToPdf);
+  obsidianBtn.addEventListener('click', saveToObsidian);
   previewBtn.addEventListener('click', previewMarkdown);
 
   await checkPage();

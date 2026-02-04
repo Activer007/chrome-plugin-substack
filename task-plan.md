@@ -189,13 +189,13 @@ chrome-plugin-substack/
 3.  ✅ **PDF 导出 (Lite)**: 实现基于 CSS 的原生打印优化方案。
 4.  ✅ **剪贴板支持**: 添加 "Copy Markdown" 按钮，解决高频粘贴需求。
 5.  ✅ **脚注支持**: 解析 `<sup>` 和锚点，生成标准脚注。
-6.  **自定义文件名**: 允许用户配置命名规则（如 `yyyy-MM-dd-Title.md`）。
+6.  ✅ **自定义文件名**: 允许用户配置命名规则（如 `yyyy-MM-dd-Title.md`）。
 
 ### 🔵 第二阶段：高级功能 (Power Features)
 **目标**：解决"永久存档"和"无缝集成"的痛点。
 *预计耗时：1 周*
 
-1.  **图片本地化 (ZIP)**: 使用 JSZip 打包图片和 Markdown，实现真正离线阅读。
+1.  ✅ **图片本地化 (ZIP)**: 使用 JSZip 打包图片和 Markdown，实现真正离线阅读。
 2.  **Obsidian 一键保存**: 利用 URI Scheme 直接写入 Obsidian Vault。
 3.  **智能内容清理**: 增加"纯净模式"选项，移除推广干扰。
 4.  **预览界面**: 下载前预览并确认内容，支持 Monaco Editor 高亮。
