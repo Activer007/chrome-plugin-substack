@@ -351,18 +351,24 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   function generateFilename(data) {
      const title = data.meta?.title || 'untitled';
-     const safeTitle = title.replace(/[^\w\s\u4e00-\u9fa5-]/g, '').replace(/\s+/g, '-').substring(0, 50);
+     // Fix: Add fallback for empty titles (e.g. only emojis)
+     const safeTitle = title.replace(/[^\w\s\u4e00-\u9fa5-]/g, '').replace(/\s+/g, '-').substring(0, 50) || 'untitled-post';
 
      let date = new Date().toISOString().split('T')[0];
      if (data.meta?.datePublished) {
-       try { date = new Date(data.meta.datePublished).toISOString().split('T')[0]; } catch(e) {}
+       try {
+         // Fix: Use local time instead of UTC to avoid date shifting
+         // en-CA locale formats as YYYY-MM-DD
+         date = new Date(data.meta.datePublished).toLocaleDateString('en-CA');
+       } catch(e) {}
      }
 
      let author = 'unknown';
      if (data.meta?.authors && data.meta.authors.length > 0) {
         author = data.meta.authors[0].name || 'unknown';
      }
-     const safeAuthor = author.replace(/[^\w\s\u4e00-\u9fa5-]/g, '').replace(/\s+/g, '-').substring(0, 30);
+     // Fix: Add fallback for empty author names
+     const safeAuthor = author.replace(/[^\w\s\u4e00-\u9fa5-]/g, '').replace(/\s+/g, '-').substring(0, 30) || 'unknown-author';
 
      const format = filenameFormatEl ? filenameFormatEl.value : 'title-date';
 
