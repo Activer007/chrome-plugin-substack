@@ -782,16 +782,26 @@ document.addEventListener('DOMContentLoaded', async () => {
                 }
 
                 /* Hide bottom sections - likes, comments, restacks */
-                [class*="like"],
-                [class*="comment"],
-                [class*="restack"],
-                [class*="share"],
+                /* Use more specific selectors to avoid hiding image containers */
                 .post-footer,
                 .footer,
-                [class*="interaction"],
-                [class*="reaction"],
-                .facepile,
-                [class*="avatar"] {
+                .interaction-bar,
+                .reaction-bar,
+                .facepile {
+                  display: none !important;
+                }
+
+                /* Hide navigation/interaction elements (but not image containers) */
+                .reader-nav-page,
+                .reader-onboarding-modal,
+                [class*="modal-uY8Fz4"] {
+                  display: none !important;
+                }
+
+                /* Hide specific UI elements with negation to protect images */
+                [class*="interaction"]:not([class*="image"]),
+                [class*="reaction"]:not([class*="image"]),
+                [class*="avatar"]:not(img) {
                   display: none !important;
                 }
 
@@ -849,6 +859,39 @@ document.addEventListener('DOMContentLoaded', async () => {
                 .buttonText-X0uSmG,
                 .priority_primary-RfbeYt {
                   display: none !important;
+                }
+
+                /* CRITICAL: Protect image containers and related elements */
+                figure,
+                picture,
+                .image-container,
+                .image2-inset,
+                .captioned-image-container,
+                [class*="image"]:not([class*="button"]):not([role="button"]) {
+                  display: block !important;
+                  visibility: visible !important;
+                  opacity: 1 !important;
+                  position: static !important;
+                }
+
+                /* Ensure images in containers are visible */
+                figure img,
+                picture img,
+                [class*="image"] img,
+                .image-link img {
+                  display: block !important;
+                  visibility: visible !important;
+                  opacity: 1 !important;
+                  max-width: 100% !important;
+                  height: auto !important;
+                }
+
+                /* Protect image links */
+                a[class*="image"]:not([role="button"]),
+                a.image-link {
+                  display: inline-block !important;
+                  visibility: visible !important;
+                  opacity: 1 !important;
                 }
 
                 /* FINAL RESCUE: Force article to be visible with high specificity */
@@ -915,40 +958,12 @@ document.addEventListener('DOMContentLoaded', async () => {
           }
           console.log('[PDF Export] Print rule found:', foundPrintRule);
 
-          // Temporary: Apply print styles to screen for testing (remove @media print wrapper)
-          console.log('[PDF Export] Applying test styles to screen...');
-          const testStyleId = 'substack-print-test-style';
-          let testStyle = document.getElementById(testStyleId);
-          if (testStyle) testStyle.remove();
-
-          testStyle = document.createElement('style');
-          testStyle.id = testStyleId;
-          // Extract print styles without @media wrapper
-          testStyle.textContent = styleElement.textContent.replace(/@media print\s*{/, '').replace(/}\s*$/, '');
-          document.head.appendChild(testStyle);
-
-          console.log('[PDF Export] Test styles applied - check if article is now visible');
-          console.log('[PDF Export] ModalViewer position now:', window.getComputedStyle(modalViewer).position);
-
-          // Function to restore page
-          const restorePage = () => {
-            console.log('[PDF Export] Restoring page state...');
-            const testStyleToRemove = document.getElementById(testStyleId);
-            if (testStyleToRemove) {
-              testStyleToRemove.remove();
-              console.log('[PDF Export] ✓ Test styles removed, page restored');
-            }
-          };
-
           // Trigger print
           console.log('[PDF Export] Triggering window.print() in 100ms...');
           setTimeout(() => {
             console.log('[PDF Export] Calling window.print() now');
             window.print();
             console.log('[PDF Export] window.print() called');
-
-            // Restore page after print dialog closes (delay to ensure dialog is handled)
-            setTimeout(restorePage, 1000);
           }, 100);
         }
       });
