@@ -305,21 +305,20 @@ document.addEventListener('DOMContentLoaded', async () => {
          md += `publisher: "${meta.publisher.name.replace(/"/g, '\\"')}"\n`;
        }
        md += '---\n\n';
-
-       md += `# ${meta?.title || 'Untitled'}\n\n`;
-    } else {
-       md += `# ${meta?.title || 'Untitled'}\n\n`;
-       if (meta?.authors?.length) {
-         md += `**Author**: ${meta.authors.map(a => a.name).join(', ')}\n\n`;
-       }
-       if (meta?.datePublished) {
-         try {
-            md += `**Date**: ${new Date(meta.datePublished).toLocaleDateString()}\n\n`;
-         } catch(e) {}
-       }
-       md += `**URL**: ${meta?.url || data.sourceUrl || ''}\n\n`;
-       md += '---\n\n';
     }
+
+    md += `# ${meta?.title || 'Untitled'}\n\n`;
+
+    if (meta?.authors?.length) {
+      md += `**Author**: ${meta.authors.map(a => a.name).join(', ')}\n\n`;
+    }
+    if (meta?.datePublished) {
+      try {
+         md += `**Date**: ${new Date(meta.datePublished).toLocaleDateString()}\n\n`;
+      } catch(e) {}
+    }
+    md += `**URL**: ${meta?.url || data.sourceUrl || ''}\n\n`;
+    md += '---\n\n';
 
     if (meta?.image) {
       md += `![Cover](${meta.image})\n\n`;
