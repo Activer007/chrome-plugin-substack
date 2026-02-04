@@ -230,55 +230,78 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             console.log('[Injected] ✅ 找到容器:', container.tagName, container.className);
 
-            const clone = container.cloneNode(true);
+            // 尝试找到 .body.markup 容器（Substack 的主要内容区域）
+            const bodyMarkup = container.querySelector('.body.markup');
+            const contentContainer = bodyMarkup || container;
 
-            // 移除导航、按钮、表单等不需要的元素
-            const elementsToRemove = clone.querySelectorAll(
-              'nav, button, [role="button"], iframe, .paywall, form, input, .header, .footer'
-            );
-            elementsToRemove.forEach(el => el.remove());
-
-            const contentElements = clone.querySelectorAll(
-              'h2, h3, h4, h5, h6, p, ul, ol, blockquote, pre, code'
-            );
+            console.log('[Injected] 内容容器:', contentContainer.className);
 
             const sections = [];
             let skipCount = 0;
 
-            contentElements.forEach(el => {
-              const tag = el.tagName.toLowerCase();
+            // 遍历所有直接子元素，保持原始顺序
+            Array.from(contentContainer.children).forEach((el, index) => {
+              const tagName = el.tagName.toLowerCase();
+              const className = el.className || '';
+
+              // 跳过非内容区域
+              if (className.includes('byline') || className.includes('header') || className.includes('footer')) {
+                return;
+              }
+
+              // 首先检查是否包含图片（非头像）
+              const images = Array.from(el.querySelectorAll('img')).filter(img =>
+                !img.src.includes('avatar') &&
+                !img.alt.includes('avatar') &&
+                !img.src.includes('/w_32,') &&
+                !img.src.includes('/w_36,') &&
+                !img.src.includes('/w_64,') &&
+                !img.src.includes('/w_72,') &&
+                !img.src.includes('/w_80,')
+              );
+
+              // 处理图片 - 图片通常在段落之前或之后
+              if (images.length > 0) {
+                images.forEach(img => {
+                  sections.push({
+                    type: 'image',
+                    content: img.src,
+                    alt: img.alt || ''
+                  });
+                });
+                console.log('[Injected] 找到图片:', images.length, '张');
+              }
+
+              // 处理文本内容
               const text = el.textContent?.trim();
 
-              // 跳过太短或重复的内容
-              if (!text || text.length < 5) {
-                skipCount++;
-                return;
-              }
-
-              // 跳过导航、订阅等文本
-              if (text.includes('Subscribe') || text.includes('Sign in') ||
-                  text.includes('Learn more') || text.match(/^(Home|Chat|Activity)$/)) {
-                skipCount++;
-                return;
-              }
-
-              if (tag === 'h2') sections.push({ type: 'h2', content: text });
-              else if (tag === 'h3') sections.push({ type: 'h3', content: text });
-              else if (tag === 'h4') sections.push({ type: 'h4', content: text });
-              else if (tag === 'p') sections.push({ type: 'paragraph', content: text });
-              else if (tag === 'ul' || tag === 'ol') {
-                const items = Array.from(el.querySelectorAll('li')).map(li => li.textContent?.trim() || '');
-                if (items.length > 0) {
-                  sections.push({ type: 'list', content: items, ordered: tag === 'ol' });
+              if (tagName === 'h2' && text && text.length > 3) {
+                sections.push({ type: 'h2', content: text });
+              } else if (tagName === 'h3' && text && text.length > 3) {
+                sections.push({ type: 'h3', content: text });
+              } else if (tagName === 'h4' && text && text.length > 3) {
+                sections.push({ type: 'h4', content: text });
+              } else if (tagName === 'p' && text && text.length >= 10) {
+                // 跳过导航、订阅等文本
+                if (text.includes('Subscribe') || text.includes('Sign in') ||
+                    text.includes('Learn more') || text.match(/^(Home|Chat|Activity|Share)$/)) {
+                  skipCount++;
+                  return;
                 }
-              } else if (tag === 'blockquote') {
+                sections.push({ type: 'paragraph', content: text });
+              } else if (tagName === 'ul' || tagName === 'ol') {
+                const items = Array.from(el.querySelectorAll('li')).map(li => li.textContent?.trim() || '');
+                if (items.length > 0 && items.some(i => i.length > 0)) {
+                  sections.push({ type: 'list', content: items, ordered: tagName === 'ol' });
+                }
+              } else if (tagName === 'blockquote' && text && text.length >= 10) {
                 sections.push({ type: 'blockquote', content: text });
-              } else if (tag === 'pre') {
+              } else if (tagName === 'pre' && text && text.length >= 10) {
                 sections.push({ type: 'code', content: text });
               }
             });
 
-            const fullText = clone.textContent?.trim() || '';
+            const fullText = contentContainer.textContent?.trim() || '';
             console.log('[Injected] ✅ 提取了', sections.length, '个段落 (跳过', skipCount, '个)');
             return { sections, fullText };
           }
@@ -469,17 +492,13 @@ document.addEventListener('DOMContentLoaded', async () => {
               case 'code':
                 md += '```\n' + section.content + '\n```\n\n';
                 break;
+              case 'image':
+                // 图片保留在原始位置
+                const altText = section.alt || '图片';
+                md += `![${altText}](${section.content})\n\n`;
+                break;
             }
           });
-
-          // 图片列表
-          if (images.length > 0) {
-            md += '## 🖼️ 文章图片\n\n';
-            images.forEach((img, index) => {
-              md += `${index + 1}. ${img.alt ? img.alt : '图片'}\n`;
-              md += `   ![${img.alt || '图片'}](${img.src})\n\n`;
-            });
-          }
 
           // 相关链接
           if (links.length > 0) {
@@ -623,16 +642,13 @@ document.addEventListener('DOMContentLoaded', async () => {
                 break;
               case 'blockquote': md += `> ${section.content}\n\n`; break;
               case 'code': md += '```\n' + section.content + '\n```\n\n'; break;
+              case 'image':
+                // 图片保留在原始位置
+                const altText = section.alt || '图片';
+                md += `![${altText}](${section.content})\n\n`;
+                break;
             }
           });
-
-          if (images.length > 0) {
-            md += '## 🖼️ 文章图片\n\n';
-            images.forEach((img, index) => {
-              md += `${index + 1}. ${img.alt ? img.alt : '图片'}\n`;
-              md += `   ![${img.alt || '图片'}](${img.src})\n\n`;
-            });
-          }
 
           if (links.length > 0) {
             md += '## 🔗 相关链接\n\n';
