@@ -653,24 +653,14 @@ document.addEventListener('DOMContentLoaded', async () => {
                   display: none !important;
                 }
 
-                /* Hide ALL buttons - stronger rules */
-                button,
-                [class*="button"],
-                [role="button"],
-                [class*="btn"],
+                /* Hide buttons - use specific selectors to avoid hiding article content */
+                button:not([class*="Link"]),
+                [class*="buttonBase"],
+                [class*="iconButton"],
+                [class*="buttonText"],
+                [class*="buttonStyle"],
                 .upgrade-btn,
-                .cta-button,
-                [class*="subscribe"],
-                [class*="upgrade"] {
-                  display: none !important;
-                }
-
-                /* Hide button containers */
-                [class*="buttonWrapper"],
-                [class*="button-wrapper"],
-                [class*="action"],
-                .actions,
-                .toolbar {
+                .cta-button {
                   display: none !important;
                 }
 
@@ -819,20 +809,26 @@ document.addEventListener('DOMContentLoaded', async () => {
                   display: none !important;
                 }
 
-                /* Hide top navigation/close buttons area */
-                [class*="pc-padding-12"][class*="pc-mobile-padding-0"] > button {
+                /* Hide by attribute patterns */
+                [data-href*="subscribe"],
+                [href*="subscribe"] {
                   display: none !important;
                 }
 
-                /* Hide audio players */
-                svg[class*="lucide-chevron"],
-                svg[class*="lucide-play"],
-                svg[class*="lucide-pause"] {
+                /* Hide aria-label buttons */
+                button[aria-label="Close"],
+                button[aria-label="View more"],
+                button[aria-label="s"],
+                button[aria-label="Previous"],
+                button[aria-label="Next"] {
                   display: none !important;
                 }
 
-                /* Hide specific button containers */
-                .pc-gap-8:has(button) {
+                /* Hide specific button classes */
+                .iconButton-mq_Et5,
+                .iconButtonBase-dJGHgN,
+                .buttonText-X0uSmG,
+                .priority_primary-RfbeYt {
                   display: none !important;
                 }
               }
