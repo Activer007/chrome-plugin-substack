@@ -244,8 +244,14 @@ document.addEventListener('DOMContentLoaded', async () => {
               const tagName = el.tagName.toLowerCase();
               const className = el.className || '';
 
-              // 跳过非内容区域
-              if (className.includes('byline') || className.includes('header') || className.includes('footer')) {
+              // 跳过非内容区域（但保留标题元素）
+              const isHeading = /^h[1-6]$/.test(tagName);
+              if (!isHeading && (
+                className.includes('byline') ||
+                className.includes('post-header') ||
+                className.includes('footer') ||
+                className === 'header'
+              )) {
                 return;
               }
 
