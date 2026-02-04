@@ -131,7 +131,7 @@ h1 {
    ========================================================================== */
 .article-card {
   position: relative;
-  height: 140px;
+  height: 200px;
   border-radius: var(--radius-lg);
   overflow: hidden;
   box-shadow: var(--shadow-md);

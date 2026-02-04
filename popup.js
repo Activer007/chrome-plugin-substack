@@ -403,11 +403,29 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
 
         // Set cover image (for immersive card background)
+        console.log('[Popup] Cover image handling:');
+        console.log('[Popup]   - articleCoverEl exists:', !!articleCoverEl);
+        console.log('[Popup]   - meta.image value:', articleData.meta.image);
         if (articleCoverEl) {
           if (articleData.meta.image) {
+            console.log('[Popup]   - Setting cover src to:', articleData.meta.image);
             articleCoverEl.src = articleData.meta.image;
+
+            // Debug: Check if image loads successfully
+            articleCoverEl.onload = () => {
+              console.log('[Popup]   - Cover image loaded successfully');
+              console.log('[Popup]   - Image dimensions:', articleCoverEl.naturalWidth, 'x', articleCoverEl.naturalHeight);
+            };
+            articleCoverEl.onerror = (e) => {
+              console.error('[Popup]   - Cover image FAILED to load:', e);
+              console.log('[Popup]   - Failed URL:', articleCoverEl.src);
+            };
+          } else {
+            console.log('[Popup]   - No image URL in meta data');
           }
           // Always keep visible - CSS fallback gradient handles missing images
+        } else {
+          console.error('[Popup]   - articleCoverEl element NOT FOUND in DOM!');
         }
 
         articleInfoEl.style.display = 'block';
