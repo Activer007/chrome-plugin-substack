@@ -647,9 +647,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 audio, video,
                 [class*="player"],
                 [class*="audio"],
-                [class*="video"],
-                /* Viewers and containers (keep modalViewer) */
-                [class*="viewer"]:not([class*="modalViewer"]) {
+                [class*="video"] {
                   display: none !important;
                 }
 
@@ -691,6 +689,25 @@ document.addEventListener('DOMContentLoaded', async () => {
                 /* Ensure all pencraft containers in the modal are visible (but NOT buttons) */
                 [class*="modalViewer"] .pencraft:not(button):not([class*="button"]) {
                   position: static !important;
+                  display: block !important;
+                  height: auto !important;
+                  min-height: auto !important;
+                  max-height: none !important;
+                }
+
+                /* Ensure all containers in modalViewer have auto height */
+                [class*="modalViewer"] > div {
+                  height: auto !important;
+                  min-height: auto !important;
+                  max-height: none !important;
+                  overflow: visible !important;
+                }
+
+                [class*="modalViewer"] div[class*="viewer"] {
+                  height: auto !important;
+                  min-height: auto !important;
+                  max-height: none !important;
+                  overflow: visible !important;
                 }
 
                 /* Force article to be visible */
@@ -785,15 +802,15 @@ document.addEventListener('DOMContentLoaded', async () => {
 
                 /* CRITICAL: Force hide ALL buttons - must be last for highest priority */
                 button,
-                [class*="button"],
+                [class*="button"]:not(article):not(.post):not(.body):not(.markup),
                 [class*="iconButton"],
-                [class*="Button"],
+                [class*="Button"]:not(article):not(.post):not(.body):not(.markup),
                 [role="button"],
                 span[data-state] button,
                 div[data-state] button,
                 .pencraft button,
-                .pencraft[class*="button"],
-                .pencraft[class*="Button"] {
+                .pencraft[class*="button"]:not(article):not(.post):not(.body):not(.markup),
+                .pencraft[class*="Button"]:not(article):not(.post):not(.body):not(.markup) {
                   display: none !important;
                   visibility: hidden !important;
                   opacity: 0 !important;
@@ -830,6 +847,22 @@ document.addEventListener('DOMContentLoaded', async () => {
                 .buttonText-X0uSmG,
                 .priority_primary-RfbeYt {
                   display: none !important;
+                }
+
+                /* FINAL RESCUE: Force article to be visible with high specificity */
+                body article,
+                body .post,
+                body .body.markup,
+                body #entry,
+                body .single-post {
+                  display: block !important;
+                  visibility: visible !important;
+                  opacity: 1 !important;
+                  width: 100% !important;
+                  height: auto !important;
+                  position: static !important;
+                  overflow: visible !important;
+                  z-index: 9999 !important;
                 }
               }
             `;
