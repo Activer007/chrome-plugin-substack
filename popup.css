@@ -423,6 +423,134 @@ select#filenameFormat:focus {
 }
 
 /* ==========================================================================
+   Skeleton Loading
+   ========================================================================== */
+.skeleton-card {
+  height: 200px;
+  border-radius: var(--radius-lg);
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+  margin-bottom: 16px;
+}
+
+.skeleton-row {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.skeleton-btn {
+  flex: 1;
+  height: 44px;
+  border-radius: var(--radius-md);
+  background: #f0f0f0;
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+.skeleton-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+}
+
+.skeleton-box {
+  height: 56px;
+  border-radius: var(--radius-md);
+  background: #f0f0f0;
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+@keyframes pulse {
+  0% { opacity: 1; }
+  50% { opacity: 0.7; }
+  100% { opacity: 1; }
+}
+
+/* ==========================================================================
+   Empty State
+   ========================================================================== */
+.empty-state {
+  text-align: center;
+  padding: 40px 20px;
+  animation: fadeIn 0.3s ease;
+}
+
+.empty-icon {
+  font-size: 48px;
+  margin-bottom: 16px;
+  opacity: 0.3;
+}
+
+.empty-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-main);
+  margin-bottom: 8px;
+}
+
+.empty-desc {
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin-bottom: 24px;
+  line-height: 1.5;
+}
+
+/* ==========================================================================
+   Settings Drawer (Slide Down)
+   ========================================================================== */
+.settings-drawer {
+  position: absolute;
+  top: 50px; /* Below header */
+  left: 0;
+  width: 100%;
+  background: var(--bg-card);
+  padding: 16px;
+  border-bottom: 1px solid var(--border-color);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+  z-index: 10;
+  transform: translateY(-100%);
+  opacity: 0;
+  visibility: hidden;
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.settings-drawer.open {
+  transform: translateY(0);
+  opacity: 1;
+  visibility: visible;
+}
+
+/* ==========================================================================
+   State Management (CSS Enforced Mutex)
+   ========================================================================== */
+/* Default hidden states */
+#loadingState, #emptyState, #articleInfo {
+  display: none;
+}
+
+/* State: Loading */
+body[data-state="loading"] #loadingState {
+  display: block !important;
+}
+
+/* State: Empty */
+body[data-state="empty"] #emptyState {
+  display: block !important;
+}
+
+/* State: Success */
+body[data-state="success"] #articleInfo {
+  display: block !important;
+  animation: fadeIn 0.4s ease;
+}
+
+/* ==========================================================================
    Utilities & Animations
    ========================================================================== */
 .loading {
