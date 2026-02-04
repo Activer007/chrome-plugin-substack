@@ -20,7 +20,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   const useFrontmatterEl = document.getElementById('useFrontmatter');
   const filenameFormatEl = document.getElementById('filenameFormat');
 
-  if (!statusEl || !extractBtn || !previewBtn) {
+  if (!statusEl || !extractBtn || !extractZipBtn || !previewBtn) {
     console.error('Missing required DOM elements');
     return;
   }
@@ -518,7 +518,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     } catch (e) {
       console.error(e);
       showStatus('Error: ' + e.message, 'error');
-      activeBtn.innerHTML = isZipMode ? 'ZIP' : 'Markdown';
+      activeBtn.innerHTML = originalText;
     } finally {
       activeBtn.disabled = false;
     }
