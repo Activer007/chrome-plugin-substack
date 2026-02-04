@@ -6,6 +6,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   const articleAuthorEl = document.getElementById('articleAuthor');
   const articleDateEl = document.getElementById('articleDate');
   const extractBtn = document.getElementById('extractBtn');
+  const copyBtn = document.getElementById('copyBtn');
   const previewBtn = document.getElementById('previewBtn');
   const previewContainer = document.getElementById('previewContainer');
   const markdownPreview = document.getElementById('markdownPreview');
@@ -99,6 +100,12 @@ document.addEventListener('DOMContentLoaded', async () => {
               switch (tag) {
                 case 'a':
                   let href = node.getAttribute('href') || '';
+
+                  // Footnote support: convert <a href="#footnote-1">1</a> to [^1]
+                  if ((node.classList.contains('footnote-anchor') || href.startsWith('#footnote-')) && !href.includes('http')) {
+                    return `[^${children.trim()}]`;
+                  }
+
                   if (node.classList.contains('button')) return children;
                   // Strip UTM
                   if (href.includes('utm_')) {
@@ -172,14 +179,45 @@ document.addEventListener('DOMContentLoaded', async () => {
             })).filter(l => l.text && l.href && !l.href.includes('javascript'));
           }
 
+          function extractFootnotes() {
+            const footnotes = [];
+            const footnoteDivs = document.querySelectorAll('.footnote');
+
+            footnoteDivs.forEach(div => {
+               // Extract ID from id="footnote-1"
+               const id = div.id.replace('footnote-', '');
+
+               // Process content
+               // Clone to avoid modifying DOM and to remove back-links safely
+               const clone = div.cloneNode(true);
+
+               // Remove back links (e.g., arrows pointing back to text)
+               const backLinks = clone.querySelectorAll('a[href^="#footnote-anchor-"]');
+               backLinks.forEach(bl => bl.remove());
+
+               // Convert to markdown
+               // Remove leading numbers if present (e.g. "1. Note text" -> "Note text")
+               let mdContent = htmlToMarkdown(clone).trim();
+               mdContent = mdContent.replace(/^[0-9]+\.\s*/, '');
+
+               if (id && mdContent) {
+                  footnotes.push({ id, content: mdContent });
+               }
+            });
+
+            return footnotes;
+          }
+
           const meta = extractJsonLdData();
           const content = extractArticleContent();
           const links = extractLinks();
+          const footnotes = extractFootnotes();
 
           return {
             meta,
             content,
             links,
+            footnotes,
             sourceUrl: window.location.href
           };
           // --- INJECTED CODE END ---
@@ -290,6 +328,13 @@ document.addEventListener('DOMContentLoaded', async () => {
       links.forEach(l => md += `- [${l.text}](${l.href})\n`);
     }
 
+    if (data.footnotes && data.footnotes.length > 0) {
+      md += '\n---\n### Footnotes\n\n';
+      data.footnotes.forEach(fn => {
+        md += `[^${fn.id}]: ${fn.content}\n`;
+      });
+    }
+
     return md;
   }
 
@@ -336,7 +381,25 @@ document.addEventListener('DOMContentLoaded', async () => {
     previewContainer.style.display = 'block';
   }
 
+  async function copyToClipboard() {
+    if (!articleData) return;
+    try {
+      const md = generateMarkdown(articleData);
+      await navigator.clipboard.writeText(md);
+      showStatus('✅ Copied to clipboard!', 'success');
+      setTimeout(() => {
+        if (statusEl.textContent.includes('Copied')) {
+           showStatus('Article detected', 'success');
+        }
+      }, 3000);
+    } catch (e) {
+      console.error(e);
+      showStatus('Failed to copy: ' + e.message, 'error');
+    }
+  }
+
   extractBtn.addEventListener('click', extractAndDownload);
+  copyBtn.addEventListener('click', copyToClipboard);
   previewBtn.addEventListener('click', previewMarkdown);
 
   await checkPage();

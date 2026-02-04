@@ -10,6 +10,8 @@
 - ✅ 友好的文件名生成
 - ✅ 不破坏原始 DOM
 - ✅ 健壮的错误处理
+- ✅ UI 重设计 (Substack 原生风)
+- ✅ YAML Frontmatter 支持 (Obsidian 兼容)
 
 ### 技术架构
 ```
@@ -182,11 +184,11 @@ chrome-plugin-substack/
 **目标**：不改变架构，大幅提升生成的 Markdown 质量和易用性，并完成 UI 改版。
 *预计耗时：3-4 天*
 
-1.  **UI/UX 重构**: 实现 "Substack 原生风" 界面（白底、橙色按钮、衬线体）。
-2.  **YAML Frontmatter**: 添加标准元数据头，方便 Obsidian/Notion 索引。
+1.  ✅ **UI/UX 重构**: 实现 "Substack 原生风" 界面（白底、橙色按钮、衬线体）。
+2.  ✅ **YAML Frontmatter**: 添加标准元数据头，方便 Obsidian/Notion 索引。
 3.  **PDF 导出 (Lite)**: 实现基于 CSS 的原生打印优化方案。
-4.  **剪贴板支持**: 添加 "Copy Markdown" 按钮，解决高频粘贴需求。
-5.  **脚注支持**: 解析 `<sup>` 和锚点，生成标准脚注。
+4.  ✅ **剪贴板支持**: 添加 "Copy Markdown" 按钮，解决高频粘贴需求。
+5.  ✅ **脚注支持**: 解析 `<sup>` 和锚点，生成标准脚注。
 6.  **自定义文件名**: 允许用户配置命名规则（如 `yyyy-MM-dd-Title.md`）。
 
 ### 🔵 第二阶段：高级功能 (Power Features)

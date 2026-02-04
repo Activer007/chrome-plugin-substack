@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Substack to Markdown",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "从 Substack 文章页面提取标题、作者、日期、内容并保存为 Markdown 格式",
   "permissions": [
     "activeTab",
