@@ -4,16 +4,31 @@
 
   // 检查是否在 Substack 文章页面
   function isSubstackPostPage() {
-    return window.location.href.match(/substack\.com\/p\/|\/p\/[\w-]+/);
+    const url = window.location.href;
+    const isSubstack = url.match(/substack\.com\/p\/|\/p\/[\w-]+/);
+    console.log('[Substack Extractor] 页面检查:', {
+      url,
+      isSubstack: !!isSubstack
+    });
+    return !!isSubstack;
   }
 
   // 从 JSON-LD 提取结构化数据
   function extractJsonLdData() {
+    console.log('[Substack Extractor] 开始提取 JSON-LD 数据...');
     const jsonLdScript = document.querySelector('script[type="application/ld+json"]');
-    if (!jsonLdScript) return null;
+    if (!jsonLdScript) {
+      console.warn('[Substack Extractor] 未找到 JSON-LD script 标签');
+      return null;
+    }
 
     try {
       const data = JSON.parse(jsonLdScript.textContent);
+      console.log('[Substack Extractor] JSON-LD 解析成功:', {
+        headline: data.headline,
+        datePublished: data.datePublished,
+        authorCount: Array.isArray(data.author) ? data.author.length : 1
+      });
       return {
         title: data.headline || '',
         description: data.description || '',
@@ -34,23 +49,41 @@
         url: data.url || window.location.href
       };
     } catch (e) {
-      console.error('Failed to parse JSON-LD:', e);
+      console.error('[Substack Extractor] JSON-LD 解析失败:', e);
       return null;
     }
   }
 
   // 从 DOM 提取文章内容
   function extractArticleContent() {
-    const main = document.querySelector('main');
-    if (!main) return { sections: [], fullText: '' };
+    console.log('[Substack Extractor] 开始提取文章内容...');
 
-    // 克隆 main 元素以避免修改原始 DOM
-    const mainClone = main.cloneNode(true);
+    // Substack 使用 <article> 元素，而不是 <main>
+    let container = document.querySelector('main');
+    if (!container) {
+      console.log('[Substack Extractor] 未找到 main 元素，尝试查找 article 元素');
+      container = document.querySelector('article');
+    }
+    if (!container) {
+      console.log('[Substack Extractor] 未找到 article 元素，尝试查找 #entry div');
+      container = document.querySelector('#entry');
+    }
+
+    if (!container) {
+      console.error('[Substack Extractor] 无法找到内容容器（main/article/#entry）');
+      return { sections: [], fullText: '' };
+    }
+
+    console.log('[Substack Extractor] 找到内容容器:', container.tagName, container.id, container.className);
+
+    // 克隆容器元素以避免修改原始 DOM
+    const containerClone = container.cloneNode(true);
 
     // 移除不需要的元素（从克隆中）
-    const elementsToRemove = mainClone.querySelectorAll(
+    const elementsToRemove = containerClone.querySelectorAll(
       'button, [role="button"], iframe, .paywall, form, input'
     );
+    console.log('[Substack Extractor] 移除了', elementsToRemove.length, '个不需要的元素');
     elementsToRemove.forEach(el => el.remove());
 
     // 获取所有内容元素
@@ -84,7 +117,12 @@
     });
 
     // 获取完整文本（从克隆中）
-    const fullText = mainClone.textContent?.trim() || '';
+    const fullText = containerClone.textContent?.trim() || '';
+
+    console.log('[Substack Extractor] 提取完成:', {
+      sectionsCount: sections.length,
+      textLength: fullText.length
+    });
 
     return { sections, fullText };
   }
@@ -118,12 +156,15 @@
 
   // 主提取函数
   function extractArticleData() {
+    console.log('[Substack Extractor] ========== 开始提取文章数据 ==========');
+    console.log('[Substack Extractor] 当前 URL:', window.location.href);
+
     const jsonLdData = extractJsonLdData();
     const articleContent = extractArticleContent();
     const images = extractImages();
     const links = extractLinks();
 
-    return {
+    const result = {
       meta: jsonLdData,
       content: articleContent,
       images,
@@ -131,6 +172,16 @@
       extractedAt: new Date().toISOString(),
       sourceUrl: window.location.href
     };
+
+    console.log('[Substack Extractor] 提取完成:', {
+      hasMeta: !!result.meta,
+      sectionsCount: result.content.sections.length,
+      imagesCount: result.images.length,
+      linksCount: result.links.length
+    });
+    console.log('[Substack Extractor] ========== 提取完成 ==========');
+
+    return result;
   }
 
   // 转换为 Markdown
