@@ -710,9 +710,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   function toggleSettings() {
-    const isVisible = settingsPanel.style.display !== 'none';
-    settingsPanel.style.display = isVisible ? 'none' : 'block';
-    settingsBtn.style.color = isVisible ? '#888' : '#FF6719';
+    settingsPanel.classList.toggle('open');
+    const isOpen = settingsPanel.classList.contains('open');
+    settingsBtn.style.color = isOpen ? '#FF6719' : '#888';
   }
 
   async function copyToClipboard() {
