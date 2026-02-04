@@ -1,271 +1,96 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Substack to Markdown</title>
-  <style>
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    }
-
-    body {
-      width: 400px;
-      min-height: 300px;
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-      background: #ffffff;
-      color: #1a1a1a;
-    }
-
-    .container {
-      padding: 20px;
-    }
-
-    h1 {
-      color: #1a1a1a;
-      font-family: Georgia, 'Times New Roman', serif;
-      font-size: 24px;
-      margin-bottom: 5px;
-      text-align: center;
-      font-weight: 700;
-    }
-
-    .subtitle {
-      color: #666;
-      text-align: center;
-      margin-bottom: 25px;
-      font-size: 14px;
-      font-family: Georgia, 'Times New Roman', serif;
-      font-style: italic;
-    }
-
-    .card {
-      background: #ffffff;
-      border: 1px solid #e0e0e0;
-      border-radius: 8px;
-      padding: 16px;
-      margin-bottom: 15px;
-      box-shadow: none;
-    }
-
-    .status {
-      padding: 12px;
-      border-radius: 4px;
-      margin-bottom: 20px;
-      font-size: 14px;
-      text-align: center;
-    }
-
-    .status.success {
-      background: #f0f9f0;
-      color: #2e7d32;
-      border: 1px solid #c8e6c9;
-    }
-
-    .status.error {
-      background: #fff5f5;
-      color: #c62828;
-      border: 1px solid #ffcdd2;
-    }
-
-    .status.info {
-      background: #f5f5f5;
-      color: #616161;
-      border: 1px solid #e0e0e0;
-    }
-
-    .button {
-      width: 100%;
-      padding: 12px 20px;
-      border: none;
-      border-radius: 4px;
-      font-size: 14px;
-      font-weight: 500;
-      cursor: pointer;
-      transition: all 0.2s;
-      margin-bottom: 10px;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-    }
-
-    .button-primary {
-      background: #FF6719;
-      color: white;
-    }
-
-    .button-primary:hover {
-      background: #e55b16;
-      transform: translateY(-1px);
-    }
-
-    .button-primary:disabled {
-      background: #ffccbc;
-      opacity: 1;
-      cursor: not-allowed;
-      transform: none;
-    }
-
-    .button-secondary {
-      background: #ffffff;
-      color: #FF6719;
-      border: 1px solid #FF6719;
-    }
-
-    .button-secondary:hover {
-      background: #fff0e6;
-    }
-
-    .info-row {
-      display: flex;
-      justify-content: space-between;
-      padding: 8px 0;
-      border-bottom: 1px solid #f0f0f0;
-    }
-
-    .info-row:last-child {
-      border-bottom: none;
-    }
-
-    .info-label {
-      color: #666;
-      font-size: 13px;
-    }
-
-    .info-value {
-      font-weight: 600;
-      font-size: 13px;
-      color: #1a1a1a;
-    }
-
-    .settings-section {
-      margin-bottom: 15px;
-      padding: 10px 0;
-      border-top: 1px solid #eee;
-      border-bottom: 1px solid #eee;
-    }
-
-    .checkbox-wrapper {
-      display: flex;
-      align-items: center;
-      cursor: pointer;
-      font-size: 14px;
-      user-select: none;
-    }
-
-    .checkbox-wrapper input {
-      margin-right: 8px;
-      accent-color: #FF6719;
-      width: 16px;
-      height: 16px;
-    }
-
-    .preview {
-      background: #f9f9f9;
-      padding: 12px;
-      border-radius: 4px;
-      border: 1px solid #eee;
-      max-height: 200px;
-      overflow-y: auto;
-      font-family: 'Monaco', 'Courier New', monospace;
-      font-size: 11px;
-      white-space: pre-wrap;
-      word-break: break-word;
-      color: #333;
-    }
-
-    .loading {
-      display: inline-block;
-      width: 14px;
-      height: 14px;
-      border: 2px solid #fff;
-      border-top: 2px solid transparent;
-      border-radius: 50%;
-      animation: spin 1s linear infinite;
-      margin-left: 10px;
-      vertical-align: middle;
-    }
-
-
-    @keyframes spin {
-      0% { transform: rotate(0deg); }
-      100% { transform: rotate(360deg); }
-    }
-
-    .footer {
-      text-align: center;
-      color: rgba(255, 255, 255, 0.8);
-      font-size: 12px;
-      margin-top: 10px;
-    }
-  </style>
+  <link rel="stylesheet" href="popup.css">
 </head>
 <body>
   <div class="container">
-    <h1>📝 Substack to Markdown</h1>
-    <p class="subtitle">一键保存 Substack 文章为 Markdown</p>
+    <div class="header-row">
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <span class="header-logo">📝</span>
+        <h1>Substack to Markdown</h1>
+      </div>
+      <button id="settingsBtn" class="icon-button" title="Settings">
+        <svg viewBox="0 0 24 24"><path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L5.09 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/></svg>
+      </button>
+    </div>
+    <p class="subtitle">Export articles to Markdown, Obsidian & PDF</p>
 
     <div id="status" class="status info">
-      检查页面中...
+      <div class="loading" style="border-color: #999; border-top-color: transparent; margin: 0;"></div>
+      <span>Detecting article...</span>
     </div>
 
     <div id="articleInfo" style="display: none;">
-      <div class="card">
-        <div class="info-row">
-          <span class="info-label">Title:</span>
-          <span class="info-value" id="articleTitle">-</span>
-        </div>
-        <div class="info-row">
-          <span class="info-label">Author:</span>
-          <span class="info-value" id="articleAuthor">-</span>
-        </div>
-        <div class="info-row">
-          <span class="info-label">Date:</span>
-          <span class="info-value" id="articleDate">-</span>
+      <div class="card" style="display: flex; gap: 12px; align-items: flex-start;">
+        <img id="articleCover" src="" alt="Cover" style="width: 72px; height: 72px; object-fit: cover; border-radius: 8px; display: none; background: #eee;">
+        <div style="flex: 1; min-width: 0;">
+          <h3 id="articleTitle" style="font-size: 14px; font-weight: 700; margin: 0 0 4px 0; line-height: 1.3; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">-</h3>
+          <div style="font-size: 12px; color: #666; margin-bottom: 2px;" id="articleAuthor">-</div>
+          <div style="font-size: 11px; color: #999;" id="articleDate">-</div>
         </div>
       </div>
 
-      <div class="settings-section">
+      <div id="settingsPanel" class="settings-section" style="display: none;">
         <label class="checkbox-wrapper" style="margin-bottom: 12px;">
           <input type="checkbox" id="useFrontmatter" checked>
-          <span>Use YAML Frontmatter (Obsidian)</span>
+          <span>Obsidian Frontmatter</span>
         </label>
 
-        <div style="display: flex; align-items: center; justify-content: space-between; font-size: 14px;">
-          <span style="color: #666;">Filename:</span>
-          <select id="filenameFormat" style="padding: 4px 8px; border-radius: 4px; border: 1px solid #ddd; background: #fff; color: #333; font-size: 13px;">
-            <option value="title-date">Title-Date (Default)</option>
+        <div style="display: flex; align-items: center; justify-content: space-between; font-size: 13px; margin-bottom: 12px;">
+          <span style="color: #666;">Filename</span>
+          <select id="filenameFormat">
+            <option value="title-date">Title-Date</option>
             <option value="date-title">Date-Title</option>
             <option value="author-title">Author-Title</option>
           </select>
         </div>
 
-        <label class="checkbox-wrapper" style="margin-top: 12px;">
+        <label class="checkbox-wrapper">
           <input type="checkbox" id="downloadImages">
           <span>Download images (ZIP)</span>
         </label>
       </div>
 
       <button id="extractBtn" class="button button-primary">
+        <svg viewBox="0 0 24 24"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
         Download Markdown
       </button>
 
-      <button id="copyBtn" class="button button-secondary">
-        Copy to Clipboard
-      </button>
+      <div class="secondary-actions">
+        <button id="copyBtn" class="button button-secondary">
+          <svg viewBox="0 0 24 24"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>
+          Copy
+        </button>
 
-      <button id="pdfBtn" class="button button-secondary">
-        Export PDF
-      </button>
+        <button id="pdfBtn" class="button button-secondary">
+          <svg viewBox="0 0 24 24"><path d="M20 2H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-8.5 7.5c0 .83-.67 1.5-1.5 1.5H9v2H7.5V7H10c.83 0 1.5.67 1.5 1.5v2.5zm2.5 3.5h-2.5V7h2.5c.83 0 1.5.67 1.5 1.5v5c0 .83-.67 1.5-1.5 1.5zm4.5 0h-1.5v-2.5h-1v2.5H15V7h3.5v2.5h-1v3.5zm-5.5-5h1v3.5h-1V8zM10 8H9v2.5h1V8z"/></svg>
+          PDF
+        </button>
 
-      <button id="previewBtn" class="button button-secondary">
-        Preview
-      </button>
+        <button id="obsidianBtn" class="button button-secondary">
+          <svg viewBox="0 0 24 24"><path d="M20.36 10.66l-6.21-8.54c-.5-.69-1.5-.69-2 0L5.94 10.66c-.66.91-.01 2.21 1.12 2.21h2.38v6.5c0 .83.67 1.5 1.5 1.5h4.25c.83 0 1.5-.67 1.5-1.5v-6.5h2.38c1.13 0 1.78-1.3 1.12-2.21z"/></svg>
+          Obsidian
+        </button>
 
-      <div id="previewContainer" style="display: none;">
-        <div class="card">
-          <h3 style="margin-bottom: 10px; font-size: 16px;">Markdown 预览</h3>
+        <button id="previewBtn" class="button button-secondary">
+          <svg viewBox="0 0 24 24"><path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/></svg>
+          Preview
+        </button>
+      </div>
+
+      <!-- Preview Modal -->
+      <div id="previewModal" class="modal" style="display: none;">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h3>Markdown Preview</h3>
+            <button id="closePreviewBtn" class="icon-button">
+              <svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+            </button>
+          </div>
           <div id="markdownPreview" class="preview"></div>
         </div>
       </div>
