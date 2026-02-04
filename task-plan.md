@@ -2,7 +2,7 @@
 
 ## 📊 当前项目状态分析
 
-### 当前版本：v1.0.3 (2026-02-04)
+### 当前版本：v1.0.4 (2026-02-05)
 
 ### 核心功能
 从 Substack 文章提取数据 → 转换为 Markdown → 下载到本地
@@ -19,6 +19,8 @@
 - ✅ 不破坏原始 DOM
 - ✅ 健壮的错误处理
 - ✅ UI 重设计 (Substack 原生风)
+- ✅ 设置面板视觉增强（v1.0.4）
+- ✅ 设置按钮交互优化（v1.0.4）
 - ✅ YAML Frontmatter 支持 (Obsidian 兼容)
 - ✅ 剪贴板一键复制
 - ✅ PDF 打印优化（v1.0.3 修复标题空白）
@@ -237,6 +239,86 @@ chrome-plugin-substack/
 
 ## 📋 更新日志
 
+### 2026-02-05 - v1.0.4
+**分支**: `fix/settings-button`
+**PR**: [#11](https://github.com/Activer007/chrome-plugin-substack/pull/11)
+
+#### 问题诊断
+用户报告设置按钮点击无响应。经分析发现：
+- JS 使用 `display` 属性控制显示/隐藏
+- CSS 使用 `transform/opacity/visibility` 控制显示/隐藏
+- 两者机制不一致导致修改 `display` 后 CSS 动画不生效
+
+#### 修复内容
+
+**1. 修复设置按钮切换逻辑**
+- 将 `toggleSettings()` 从修改 `display` 改为切换 `.open` CSS 类
+- 与 CSS 中的 `.settings-drawer.open` 动画配合
+
+**2. 增强设置面板视觉设计**
+- 渐变背景：`rgba(255,255,255,0.98)` → `rgba(249,250,251,0.98)`
+- 顶部 3px 橙色强调线（品牌色 `#FF6719`）
+- 左右各 8px 空隙，创造悬浮效果
+- 双层阴影增强深度感
+- 底部 12px 圆角
+
+**3. 改进图标一致性**
+- 替换为更简洁的 Material Design 风格设置图标
+- 与底部操作按钮图标风格保持一致
+
+**4. 增强交互体验**
+- 点击设置面板外部区域自动关闭
+- Escape 键关闭设置面板和预览模态框
+
+#### 技术细节
+```javascript
+// 修改前
+function toggleSettings() {
+  const isVisible = settingsPanel.style.display !== 'none';
+  settingsPanel.style.display = isVisible ? 'none' : 'block';
+  settingsBtn.style.color = isVisible ? '#888' : '#FF6719';
+}
+
+// 修改后
+function toggleSettings() {
+  settingsPanel.classList.toggle('open');
+  const isOpen = settingsPanel.classList.contains('open');
+  settingsBtn.style.color = isOpen ? '#FF6719' : '#888';
+}
+
+// 新增：点击外部关闭
+document.addEventListener('click', (e) => {
+  if (!settingsPanel.contains(e.target) && !settingsBtn.contains(e.target)) {
+    if (settingsPanel.classList.contains('open')) {
+      settingsPanel.classList.remove('open');
+      settingsBtn.style.color = '#888';
+    }
+  }
+});
+```
+
+```css
+/* 设置面板新样式 */
+.settings-drawer {
+  background: linear-gradient(to bottom, rgba(255,255,255,0.98), rgba(249,250,251,0.98));
+  border: 1px solid rgba(0,0,0,0.08);
+  border-top: 3px solid var(--primary);
+  box-shadow:
+    0 8px 24px rgba(0,0,0,0.12),
+    0 2px 6px rgba(0,0,0,0.08);
+  border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+  margin: 0 8px;
+  width: calc(100% - 16px);
+}
+```
+
+#### 提交记录
+- f958d78: Fix settings button toggle logic
+- 3c2f4f3: Enhance settings drawer visual distinction
+- 6190e82: Improve icon consistency and add click-outside-to-close
+
+---
+
 ### 2026-02-04 - v1.0.3
 **分支**: `fix/pdf-print-top-spacing`
 
@@ -374,6 +456,6 @@ v1.0.3 (当前) → v1.0.4 (纯净模式) → v1.1.0 (代码模块化) → v1.2.
 
 ---
 
-**文档更新时间**：2026-02-04
-**当前版本**：v1.0.3
+**文档更新时间**：2026-02-05
+**当前版本**：v1.0.4
 **状态**：第一阶段 ✅ 100% | 第二阶段 ✅ 75% | 第三阶段 ⬜ 0% | 第四阶段 ⬜ 0%
