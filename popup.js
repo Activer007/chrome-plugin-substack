@@ -7,6 +7,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   const articleAuthorEl = document.getElementById('articleAuthor');
   const articleDateEl = document.getElementById('articleDate');
   const extractBtn = document.getElementById('extractBtn');
+  const extractZipBtn = document.getElementById('extractZipBtn');
   const copyBtn = document.getElementById('copyBtn');
   const pdfBtn = document.getElementById('pdfBtn');
   const obsidianBtn = document.getElementById('obsidianBtn');
@@ -18,7 +19,6 @@ document.addEventListener('DOMContentLoaded', async () => {
   const settingsPanel = document.getElementById('settingsPanel');
   const useFrontmatterEl = document.getElementById('useFrontmatter');
   const filenameFormatEl = document.getElementById('filenameFormat');
-  const downloadImagesEl = document.getElementById('downloadImages');
 
   if (!statusEl || !extractBtn || !previewBtn) {
     console.error('Missing required DOM elements');
@@ -31,13 +31,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     filenameFormatEl.value = savedFormat;
     filenameFormatEl.addEventListener('change', () => {
       localStorage.setItem('filenameFormat', filenameFormatEl.value);
-    });
-  }
-
-  if (downloadImagesEl) {
-    downloadImagesEl.checked = localStorage.getItem('downloadImages') === 'true';
-    downloadImagesEl.addEventListener('change', () => {
-      localStorage.setItem('downloadImages', downloadImagesEl.checked);
     });
   }
 
@@ -416,14 +409,15 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   }
 
-  async function extractAndDownload() {
+  async function extractAndDownload(isZipMode = false) {
     if (!articleData) return;
 
-    const isZipMode = downloadImagesEl && downloadImagesEl.checked;
+    const activeBtn = isZipMode ? extractZipBtn : extractBtn;
 
     try {
-      extractBtn.disabled = true;
-      extractBtn.innerHTML = isZipMode ? 'Initializing...' : 'Processing...';
+      activeBtn.disabled = true;
+      const originalText = activeBtn.innerHTML;
+      activeBtn.innerHTML = isZipMode ? 'Initializing...' : 'Processing...';
 
       const filename = generateFilename(articleData);
 
@@ -448,14 +442,14 @@ document.addEventListener('DOMContentLoaded', async () => {
         const uniqueUrls = [...new Set(urls)];
 
         // 2. Download images
-        extractBtn.innerHTML = `Downloading ${uniqueUrls.length} images...`;
+        activeBtn.innerHTML = `Downloading ${uniqueUrls.length} images...`;
         let downloadCount = 0;
 
         const downloadPromises = uniqueUrls.map(async (url, index) => {
            // Update progress (approximate since parallel)
            downloadCount++;
            if (downloadCount % 5 === 0 || downloadCount === uniqueUrls.length) {
-              extractBtn.innerHTML = `Downloading images (${downloadCount}/${uniqueUrls.length})...`;
+              activeBtn.innerHTML = `Downloading images (${downloadCount}/${uniqueUrls.length})...`;
            }
 
            const blob = await fetchImage(url);
@@ -489,7 +483,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
 
         // 4. Generate Markdown and ZIP
-        extractBtn.innerHTML = 'Compressing...';
+        activeBtn.innerHTML = 'Compressing...';
         const md = generateMarkdown(localData);
         zip.file(filename, md); // Use the same filename inside the zip
 
@@ -518,13 +512,15 @@ document.addEventListener('DOMContentLoaded', async () => {
         setTimeout(() => URL.revokeObjectURL(url), 10000);
       }
 
-      showStatus('✅ Downloaded!', 'success');
+      showStatus(isZipMode ? 'ZIP Downloaded!' : 'Markdown Downloaded!', 'success');
+      activeBtn.innerHTML = originalText;
+
     } catch (e) {
       console.error(e);
       showStatus('Error: ' + e.message, 'error');
+      activeBtn.innerHTML = isZipMode ? 'ZIP' : 'Markdown';
     } finally {
-      extractBtn.disabled = false;
-      extractBtn.innerHTML = 'Download Markdown';
+      activeBtn.disabled = false;
     }
   }
 
@@ -692,7 +688,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   }
 
-  extractBtn.addEventListener('click', extractAndDownload);
+  extractBtn.addEventListener('click', () => extractAndDownload(false));
+  extractZipBtn.addEventListener('click', () => extractAndDownload(true));
   copyBtn.addEventListener('click', copyToClipboard);
   pdfBtn.addEventListener('click', exportToPdf);
   obsidianBtn.addEventListener('click', saveToObsidian);
