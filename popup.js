@@ -402,12 +402,12 @@ document.addEventListener('DOMContentLoaded', async () => {
            } catch(e) { articleDateEl.textContent = '-'; }
         }
 
-        // Show cover image if available
-        if (articleData.meta.image && articleCoverEl) {
-          articleCoverEl.src = articleData.meta.image;
-          articleCoverEl.style.display = 'block';
-        } else if (articleCoverEl) {
-          articleCoverEl.style.display = 'none';
+        // Set cover image (for immersive card background)
+        if (articleCoverEl) {
+          if (articleData.meta.image) {
+            articleCoverEl.src = articleData.meta.image;
+          }
+          // Always keep visible - CSS fallback gradient handles missing images
         }
 
         articleInfoEl.style.display = 'block';
