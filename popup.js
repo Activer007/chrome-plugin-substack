@@ -710,9 +710,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   function toggleSettings() {
-    const isVisible = settingsPanel.style.display !== 'none';
-    settingsPanel.style.display = isVisible ? 'none' : 'block';
-    settingsBtn.style.color = isVisible ? '#888' : '#FF6719';
+    settingsPanel.classList.toggle('open');
+    const isOpen = settingsPanel.classList.contains('open');
+    settingsBtn.style.color = isOpen ? '#FF6719' : '#888';
   }
 
   async function copyToClipboard() {
@@ -1248,10 +1248,28 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (e.target === previewModal) closePreview();
   });
 
-  // Close modal on Escape key
+  // Close settings panel when clicking outside
+  document.addEventListener('click', (e) => {
+    if (!settingsPanel.contains(e.target) && !settingsBtn.contains(e.target)) {
+      if (settingsPanel.classList.contains('open')) {
+        settingsPanel.classList.remove('open');
+        settingsBtn.style.color = '#888';
+      }
+    }
+  });
+
+  // Close modal/settings on Escape key
   document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape' && previewModal.style.display === 'flex') {
-      closePreview();
+    if (e.key === 'Escape') {
+      // Close preview modal
+      if (previewModal.style.display === 'flex') {
+        closePreview();
+      }
+      // Close settings panel
+      if (settingsPanel.classList.contains('open')) {
+        settingsPanel.classList.remove('open');
+        settingsBtn.style.color = '#888';
+      }
     }
   });
 
