@@ -238,13 +238,23 @@ document.addEventListener('DOMContentLoaded', async () => {
               }
             }
 
+            // 提取封面图片 - 优先使用 og:image 或 twitter:image
+            let coverImage = '';
+            const ogImage = document.querySelector('meta[property="og:image"]');
+            const twitterImage = document.querySelector('meta[name="twitter:image"]');
+            if (ogImage && ogImage.content) {
+              coverImage = ogImage.content;
+            } else if (twitterImage && twitterImage.content) {
+              coverImage = twitterImage.content;
+            }
+
             return {
               title,
               description: '',
               datePublished: dateText,
               authors: authorName ? [{ name: authorName, url: authorLink?.href || '' }] : [],
               publisher: { name: pubName, url: pubUrl },
-              image: '',
+              image: coverImage,
               url: window.location.href
             };
           }
@@ -402,12 +412,30 @@ document.addEventListener('DOMContentLoaded', async () => {
            } catch(e) { articleDateEl.textContent = '-'; }
         }
 
-        // Show cover image if available
-        if (articleData.meta.image && articleCoverEl) {
-          articleCoverEl.src = articleData.meta.image;
-          articleCoverEl.style.display = 'block';
-        } else if (articleCoverEl) {
-          articleCoverEl.style.display = 'none';
+        // Set cover image (for immersive card background)
+        console.log('[Popup] Cover image handling:');
+        console.log('[Popup]   - articleCoverEl exists:', !!articleCoverEl);
+        console.log('[Popup]   - meta.image value:', articleData.meta.image);
+        if (articleCoverEl) {
+          if (articleData.meta.image) {
+            console.log('[Popup]   - Setting cover src to:', articleData.meta.image);
+            articleCoverEl.src = articleData.meta.image;
+
+            // Debug: Check if image loads successfully
+            articleCoverEl.onload = () => {
+              console.log('[Popup]   - Cover image loaded successfully');
+              console.log('[Popup]   - Image dimensions:', articleCoverEl.naturalWidth, 'x', articleCoverEl.naturalHeight);
+            };
+            articleCoverEl.onerror = (e) => {
+              console.error('[Popup]   - Cover image FAILED to load:', e);
+              console.log('[Popup]   - Failed URL:', articleCoverEl.src);
+            };
+          } else {
+            console.log('[Popup]   - No image URL in meta data');
+          }
+          // Always keep visible - CSS fallback gradient handles missing images
+        } else {
+          console.error('[Popup]   - articleCoverEl element NOT FOUND in DOM!');
         }
 
         articleInfoEl.style.display = 'block';
