@@ -187,7 +187,7 @@ chrome-plugin-substack/
 1.  ✅ **UI/UX 重构**: 实现 "Substack 原生风" 界面（白底、橙色按钮、衬线体）。
 2.  ✅ **YAML Frontmatter**: 添加标准元数据头，方便 Obsidian/Notion 索引。
 3.  ✅ **PDF 导出 (Lite)**: 实现基于 CSS 的原生打印优化方案。
-    - ✅ **v2.0.3 修复**: 使用 Chrome DevTools MCP 工具分析并修复打印时标题上方 ~100px 空白问题（modalViewer 和 article 的 padding/margin 重置）
+    - ✅ **v1.0.3 修复**: 使用 Chrome DevTools MCP 工具分析并修复打印时标题上方 ~100px 空白问题（modalViewer 和 article 的 padding/margin 重置）
 4.  ✅ **剪贴板支持**: 添加 "Copy Markdown" 按钮，解决高频粘贴需求。
 5.  ✅ **脚注支持**: 解析 `<sup>` 和锚点，生成标准脚注。
 6.  ✅ **自定义文件名**: 允许用户配置命名规则（如 `yyyy-MM-dd-Title.md`）。
@@ -223,7 +223,7 @@ chrome-plugin-substack/
 
 ## 📋 更新日志
 
-### 2026-02-04 - v2.0.3
+### 2026-02-04 - v1.0.3
 **分支**: `fix/pdf-print-top-spacing`
 
 #### 问题诊断
@@ -272,4 +272,4 @@ h1 {
 ---
 
 **文档更新时间**：2026-02-04
-**状态**：已整合 UI/UX 重构与 PDF 导出方案 | v2.0.3 已修复 PDF 打印空白问题
+**状态**：已整合 UI/UX 重构与 PDF 导出方案 | v1.0.3 已修复 PDF 打印空白问题
