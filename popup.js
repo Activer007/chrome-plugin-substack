@@ -94,12 +94,71 @@ document.addEventListener('DOMContentLoaded', async () => {
             const timeEl = document.querySelector('time');
             const dateText = timeEl ? timeEl.getAttribute('datetime') || timeEl.textContent : '';
 
+            // 提取发布者名称 - 从文章链接中智能提取
+            let pubName = '';
+            let pubUrl = '';
+
+            // 策略：找到主文章的 /p/ 链接，从中提取发布者域名，然后找对应的发布者链接
+            const mainPostLinks = Array.from(document.querySelectorAll('a[href*="/p/"]')).filter(a => {
+              return !a.className.includes('reader2-inbox-post') &&
+                     !a.className.includes('linkRow') &&
+                     !a.href.includes('utm_source');
+            });
+
+            // 选择文本最长的作为主文章链接
+            const mainPostLink = mainPostLinks.reduce((longest, current) => {
+              const currentText = current.textContent?.trim() || '';
+              const longestText = longest.textContent?.trim() || '';
+              return currentText.length > longestText.length ? current : longest;
+            }, mainPostLinks[0]);
+
+            if (mainPostLink && mainPostLink.href) {
+              const urlMatch = mainPostLink.href.match(/https?:\/\/([^\/]+)\//);
+              if (urlMatch) {
+                const domain = urlMatch[1];
+                // 找指向该域名的发布者链接
+                const pubLinks = Array.from(document.querySelectorAll('a')).filter(a =>
+                  a.href && a.href.includes(domain) && !a.href.includes('/p/')
+                );
+
+                // 过滤掉订阅按钮和非正式链接
+                const validLinks = pubLinks.filter(a => {
+                  const text = a.textContent?.trim().toLowerCase() || '';
+                  const href = a.href || '';
+
+                  // 排除按钮和订阅相关链接
+                  if (text.includes('subscribe') || text.includes('upgrade') ||
+                      text.includes('sign in') || text.includes('already a') ||
+                      href.includes('/subscribe') || href.includes('/sign-in')) {
+                    return false;
+                  }
+
+                  // 文本长度合理（3-100字符），非空
+                  const textLength = a.textContent?.trim().length || 0;
+                  return textLength >= 3 && textLength <= 100;
+                });
+
+                // 选择文本最短的作为发布者链接
+                const pubLink = validLinks.reduce((shortest, current) => {
+                  const currentText = current.textContent?.trim() || '';
+                  const shortestText = shortest.textContent?.trim() || '';
+                  if (!shortestText) return current;
+                  return currentText.length < shortestText.length ? current : shortest;
+                }, validLinks[0]);
+
+                if (pubLink) {
+                  pubName = pubLink.textContent?.trim() || '';
+                  pubUrl = pubLink.href || '';
+                }
+              }
+            }
+
             return {
               title,
               description: '',
               datePublished: dateText,
               authors: authorName ? [{ name: authorName, url: authorLink?.href || '' }] : [],
-              publisher: { name: '', url: '' },
+              publisher: { name: pubName, url: pubUrl },
               image: '',
               url: window.location.href
             };
