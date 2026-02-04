@@ -830,6 +830,29 @@ document.addEventListener('DOMContentLoaded', async () => {
                   max-width: none !important;
                   overflow: visible !important;
                   z-index: auto !important;
+                  /* Reset padding/margin that cause top spacing */
+                  padding: 0 !important;
+                  margin: 0 !important;
+                }
+
+                /* Reset all padding/margin inside modalViewer to eliminate top spacing */
+                [class*="modalViewer"] > div,
+                [class*="modalViewer"] div[class*="viewer"],
+                [class*="modalViewer"] .pencraft {
+                  padding: 0 !important;
+                  margin: 0 !important;
+                }
+
+                /* Reset specific Substack pencraft padding classes */
+                [class*="modalViewer"] [class*="pc-padding"],
+                [class*="modalViewer"] [class*="pc-flexDirection-column"],
+                [class*="modalViewer"] [class*="pc-justifyContent"] {
+                  padding-top: 0 !important;
+                  padding-bottom: 0 !important;
+                  padding-left: 0 !important;
+                  padding-right: 0 !important;
+                  margin-top: 0 !important;
+                  margin-bottom: 0 !important;
                 }
 
                 /* Ensure all pencraft containers in the modal are visible (but NOT buttons) */
@@ -863,6 +886,15 @@ document.addEventListener('DOMContentLoaded', async () => {
                   width: 100% !important;
                   height: auto !important;
                   overflow: visible !important;
+                  /* Reset article padding that causes top spacing */
+                  padding: 0 !important;
+                  margin: 0 !important;
+                }
+
+                /* Ensure first child of article has no top spacing */
+                article > *:first-child {
+                  margin-top: 0 !important;
+                  padding-top: 0 !important;
                 }
 
                 main, article, .body.markup, .single-post {
@@ -887,7 +919,12 @@ document.addEventListener('DOMContentLoaded', async () => {
                   font-size: 12pt;
                 }
 
-                h1 { font-size: 24pt !important; margin-bottom: 0.5em !important; }
+                h1 {
+                  font-size: 24pt !important;
+                  margin-top: 0 !important;
+                  margin-bottom: 0.5em !important;
+                  padding-top: 0 !important;
+                }
                 h2 { font-size: 18pt !important; margin-top: 1em !important; }
                 p, li { line-height: 1.5 !important; }
 
