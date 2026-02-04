@@ -11,8 +11,11 @@ document.addEventListener('DOMContentLoaded', async () => {
   const pdfBtn = document.getElementById('pdfBtn');
   const obsidianBtn = document.getElementById('obsidianBtn');
   const previewBtn = document.getElementById('previewBtn');
-  const previewContainer = document.getElementById('previewContainer');
+  const previewModal = document.getElementById('previewModal');
+  const closePreviewBtn = document.getElementById('closePreviewBtn');
   const markdownPreview = document.getElementById('markdownPreview');
+  const settingsBtn = document.getElementById('settingsBtn');
+  const settingsPanel = document.getElementById('settingsPanel');
   const useFrontmatterEl = document.getElementById('useFrontmatter');
   const filenameFormatEl = document.getElementById('filenameFormat');
   const downloadImagesEl = document.getElementById('downloadImages');
@@ -528,20 +531,36 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (!articleData) return;
     const md = generateMarkdown(articleData);
     markdownPreview.textContent = md;
-    previewContainer.style.display = 'block';
+    previewModal.style.display = 'flex';
+  }
+
+  function closePreview() {
+    previewModal.style.display = 'none';
+  }
+
+  function toggleSettings() {
+    const isVisible = settingsPanel.style.display !== 'none';
+    settingsPanel.style.display = isVisible ? 'none' : 'block';
+    settingsBtn.style.color = isVisible ? '#888' : '#FF6719';
   }
 
   async function copyToClipboard() {
     if (!articleData) return;
+    const originalHTML = copyBtn.innerHTML;
     try {
       const md = generateMarkdown(articleData);
       await navigator.clipboard.writeText(md);
-      showStatus('✅ Copied to clipboard!', 'success');
+
+      // Button feedback
+      copyBtn.innerHTML = '<svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg> Copied!';
+      copyBtn.style.color = '#1e8e3e';
+      copyBtn.style.borderColor = '#1e8e3e';
+
       setTimeout(() => {
-        if (statusEl.textContent.includes('Copied')) {
-           showStatus('Article detected', 'success');
-        }
-      }, 3000);
+        copyBtn.innerHTML = originalHTML;
+        copyBtn.style.color = '';
+        copyBtn.style.borderColor = '';
+      }, 2000);
     } catch (e) {
       console.error(e);
       showStatus('Failed to copy: ' + e.message, 'error');
@@ -677,6 +696,13 @@ document.addEventListener('DOMContentLoaded', async () => {
   pdfBtn.addEventListener('click', exportToPdf);
   obsidianBtn.addEventListener('click', saveToObsidian);
   previewBtn.addEventListener('click', previewMarkdown);
+  closePreviewBtn.addEventListener('click', closePreview);
+  settingsBtn.addEventListener('click', toggleSettings);
+
+  // Close modal when clicking outside
+  previewModal.addEventListener('click', (e) => {
+    if (e.target === previewModal) closePreview();
+  });
 
   await checkPage();
 });
