@@ -507,12 +507,16 @@ select#filenameFormat:focus {
 .settings-drawer {
   position: absolute;
   top: 50px; /* Below header */
-  left: 0;
-  width: 100%;
-  background: var(--bg-card);
+  left: 8px;
+  width: calc(100% - 16px);
+  background: linear-gradient(to bottom, rgba(255,255,255,0.98), rgba(249,250,251,0.98));
   padding: 16px;
-  border-bottom: 1px solid var(--border-color);
-  box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+  border: 1px solid rgba(0,0,0,0.08);
+  border-top: 3px solid var(--primary);  /* Orange accent line */
+  box-shadow:
+    0 8px 24px rgba(0,0,0,0.12),
+    0 2px 6px rgba(0,0,0,0.08);
+  border-radius: 0 0 var(--radius-lg) var(--radius-lg);
   z-index: 10;
   transform: translateY(-100%);
   opacity: 0;
