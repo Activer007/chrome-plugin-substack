@@ -7,6 +7,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   const articleDateEl = document.getElementById('articleDate');
   const extractBtn = document.getElementById('extractBtn');
   const copyBtn = document.getElementById('copyBtn');
+  const pdfBtn = document.getElementById('pdfBtn');
   const previewBtn = document.getElementById('previewBtn');
   const previewContainer = document.getElementById('previewContainer');
   const markdownPreview = document.getElementById('markdownPreview');
@@ -398,8 +399,107 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   }
 
+  async function exportToPdf() {
+    try {
+      showStatus('Preparing PDF...', 'info');
+      const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+
+      await chrome.scripting.executeScript({
+        target: { tabId: tab.id },
+        func: () => {
+          // Create style element for print optimization
+          const styleId = 'substack-print-style';
+          let style = document.getElementById(styleId);
+
+          if (!style) {
+            style = document.createElement('style');
+            style.id = styleId;
+            style.textContent = `
+              @media print {
+                /* Hide distractions */
+                nav, header, footer, aside,
+                #comments, .post-comments, .comments-section,
+                .subscribe-widget, .subscription-widget, .subscribe-footer,
+                .share-toolbar, .post-footer,
+                .simple-heart-button, .like-button,
+                div[class*="frontend-pencraft-Nav"],
+                div[class*="settings-menu"],
+                .dock,
+                .button-wrapper,
+                .secondary-actions,
+                .pencraft.pc-display-flex {
+                  display: none !important;
+                }
+
+                /* Layout overrides */
+                body, html {
+                  background-color: #fff !important;
+                  background: #fff !important;
+                  height: auto !important;
+                  overflow: visible !important;
+                }
+
+                main, article, .body.markup, .single-post {
+                  width: 100% !important;
+                  max-width: 100% !important;
+                  margin: 0 !important;
+                  padding: 0 !important;
+                  border: none !important;
+                  box-shadow: none !important;
+                }
+
+                /* Typography */
+                body {
+                  color: #000 !important;
+                  font-size: 12pt;
+                }
+
+                h1 { font-size: 24pt !important; margin-bottom: 0.5em !important; }
+                h2 { font-size: 18pt !important; margin-top: 1em !important; }
+                p, li { line-height: 1.5 !important; }
+
+                a {
+                   text-decoration: underline;
+                   color: #000 !important;
+                }
+
+                img {
+                  max-width: 100% !important;
+                  height: auto !important;
+                  break-inside: avoid;
+                }
+
+                blockquote {
+                  border-left: 3px solid #000 !important;
+                  padding-left: 1em !important;
+                }
+              }
+            `;
+            document.head.appendChild(style);
+          }
+
+          // Trigger print
+          setTimeout(() => {
+            window.print();
+          }, 100);
+        }
+      });
+
+      showStatus('Print dialog opened', 'success');
+      setTimeout(() => {
+         if (statusEl.textContent.includes('Print')) {
+            showStatus('Article detected', 'success');
+         }
+      }, 3000);
+    } catch (e) {
+      console.error(e);
+      showStatus('PDF Error: ' + e.message, 'error');
+    }
+  }
+
   extractBtn.addEventListener('click', extractAndDownload);
   copyBtn.addEventListener('click', copyToClipboard);
+  pdfBtn.addEventListener('click', exportToPdf);
   previewBtn.addEventListener('click', previewMarkdown);
 
   await checkPage();
