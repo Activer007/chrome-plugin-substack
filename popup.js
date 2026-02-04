@@ -449,6 +449,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         // 2. Download images
         extractBtn.innerHTML = `Downloading ${uniqueUrls.length} images...`;
+        let downloadCount = 0;
 
         const downloadPromises = uniqueUrls.map(async (url, index) => {
            // Update progress (approximate since parallel)
