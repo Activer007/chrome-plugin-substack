@@ -12,10 +12,20 @@ document.addEventListener('DOMContentLoaded', async () => {
   const previewContainer = document.getElementById('previewContainer');
   const markdownPreview = document.getElementById('markdownPreview');
   const useFrontmatterEl = document.getElementById('useFrontmatter');
+  const filenameFormatEl = document.getElementById('filenameFormat');
 
   if (!statusEl || !extractBtn || !previewBtn) {
     console.error('Missing required DOM elements');
     return;
+  }
+
+  // Load settings
+  const savedFormat = localStorage.getItem('filenameFormat') || 'title-date';
+  if (filenameFormatEl) {
+    filenameFormatEl.value = savedFormat;
+    filenameFormatEl.addEventListener('change', () => {
+      localStorage.setItem('filenameFormat', filenameFormatEl.value);
+    });
   }
 
   let articleData = null;
@@ -342,11 +352,29 @@ document.addEventListener('DOMContentLoaded', async () => {
   function generateFilename(data) {
      const title = data.meta?.title || 'untitled';
      const safeTitle = title.replace(/[^\w\s\u4e00-\u9fa5-]/g, '').replace(/\s+/g, '-').substring(0, 50);
+
      let date = new Date().toISOString().split('T')[0];
      if (data.meta?.datePublished) {
        try { date = new Date(data.meta.datePublished).toISOString().split('T')[0]; } catch(e) {}
      }
-     return `${safeTitle}-${date}.md`;
+
+     let author = 'unknown';
+     if (data.meta?.authors && data.meta.authors.length > 0) {
+        author = data.meta.authors[0].name || 'unknown';
+     }
+     const safeAuthor = author.replace(/[^\w\s\u4e00-\u9fa5-]/g, '').replace(/\s+/g, '-').substring(0, 30);
+
+     const format = filenameFormatEl ? filenameFormatEl.value : 'title-date';
+
+     switch (format) {
+        case 'date-title':
+            return `${date}-${safeTitle}.md`;
+        case 'author-title':
+            return `${safeAuthor}-${safeTitle}.md`;
+        case 'title-date':
+        default:
+            return `${safeTitle}-${date}.md`;
+     }
   }
 
   async function extractAndDownload() {
