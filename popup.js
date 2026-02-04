@@ -977,8 +977,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                   left: -9999px !important;
                 }
 
-                /* Force hide spans that contain buttons */
-                span[data-state] {
+                /* Force hide spans that contain buttons (but preserve author links) */
+                span[data-state]:not(:has(a[href*="/@"])) {
                   display: none !important;
                 }
 
@@ -1034,6 +1034,25 @@ document.addEventListener('DOMContentLoaded', async () => {
                 a[class*="image"]:not([role="button"]),
                 a.image-link {
                   display: inline-block !important;
+                  visibility: visible !important;
+                  opacity: 1 !important;
+                }
+
+                /* CRITICAL: Ensure byline metadata is visible (author, publisher, date) */
+                .byline-wrapper,
+                .byline-wrapper *,
+                .byline-wrapper a,
+                .byline-wrapper div,
+                [class*="meta-EgzBVA"],
+                [class*="byline"] {
+                  display: block !important;
+                  visibility: visible !important;
+                  opacity: 1 !important;
+                  position: static !important;
+                }
+
+                .byline-wrapper .pencraft {
+                  display: flex !important;
                   visibility: visible !important;
                   opacity: 1 !important;
                 }
