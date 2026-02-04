@@ -238,13 +238,23 @@ document.addEventListener('DOMContentLoaded', async () => {
               }
             }
 
+            // 提取封面图片 - 优先使用 og:image 或 twitter:image
+            let coverImage = '';
+            const ogImage = document.querySelector('meta[property="og:image"]');
+            const twitterImage = document.querySelector('meta[name="twitter:image"]');
+            if (ogImage && ogImage.content) {
+              coverImage = ogImage.content;
+            } else if (twitterImage && twitterImage.content) {
+              coverImage = twitterImage.content;
+            }
+
             return {
               title,
               description: '',
               datePublished: dateText,
               authors: authorName ? [{ name: authorName, url: authorLink?.href || '' }] : [],
               publisher: { name: pubName, url: pubUrl },
-              image: '',
+              image: coverImage,
               url: window.location.href
             };
           }
