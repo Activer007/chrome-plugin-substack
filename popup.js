@@ -704,5 +704,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (e.target === previewModal) closePreview();
   });
 
+  // Close modal on Escape key
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && previewModal.style.display === 'flex') {
+      closePreview();
+    }
+  });
+
   await checkPage();
 });
