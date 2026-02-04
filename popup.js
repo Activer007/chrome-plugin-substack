@@ -2,6 +2,7 @@
 document.addEventListener('DOMContentLoaded', async () => {
   const statusEl = document.getElementById('status');
   const articleInfoEl = document.getElementById('articleInfo');
+  const articleCoverEl = document.getElementById('articleCover');
   const articleTitleEl = document.getElementById('articleTitle');
   const articleAuthorEl = document.getElementById('articleAuthor');
   const articleDateEl = document.getElementById('articleDate');
@@ -260,6 +261,15 @@ document.addEventListener('DOMContentLoaded', async () => {
              articleDateEl.textContent = new Date(articleData.meta.datePublished).toLocaleDateString();
            } catch(e) { articleDateEl.textContent = '-'; }
         }
+
+        // Show cover image if available
+        if (articleData.meta.image && articleCoverEl) {
+          articleCoverEl.src = articleData.meta.image;
+          articleCoverEl.style.display = 'block';
+        } else if (articleCoverEl) {
+          articleCoverEl.style.display = 'none';
+        }
+
         articleInfoEl.style.display = 'block';
         showStatus('Article detected', 'success');
       }
