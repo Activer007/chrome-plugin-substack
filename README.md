@@ -1,5 +1,7 @@
 # Substack to Markdown Chrome 插件
 
+![Plugin Preview](images/pic.jpg)
+
 一个强大的 Chrome 浏览器插件，用于从 Substack 文章页面提取标题、作者、日期、内容等信息并保存为 Markdown 格式。
 
 ## ✨ 功能特性
@@ -12,6 +14,15 @@
 - 📝 **格式良好**：生成标准 Markdown 格式
 - 💾 **一键下载**：自动保存到本地
 - 👁️ **实时预览**：预览生成的 Markdown 内容
+
+### v1.1.6 新增特性 ⭐
+- 🔗 **支持 /@username/p-xxx URL 格式**（个人资料文章页面）
+- 🧠 **智能提取**：检测 JSON-LD Person 类型并优先使用 og:title/og:image
+- 📅 **日期解析增强**：正则表达式不区分大小写（支持 FEB、Feb 等格式）
+- 👥 **多作者支持**：支持多作者显示
+- 🏷️ **品牌标识**：添加 "Powered By Activer" 署名
+- 📄 **PDF 署名**：生成的 PDF 底部添加品牌页脚
+- 🖼️ **文档优化**：README 添加预览图片
 
 ### v1.1.5 新增特性 ⭐
 - 📄 **客户端 PDF 导出**：使用 pdfmake 直接生成高质量 PDF，无需打印对话框
@@ -197,6 +208,15 @@ document.querySelector('.body.markup')
 
 ## 📊 版本历史
 
+### v1.1.6 (2026-02-05)
+- 🔗 **新增**：支持 `/@username/p-xxx` URL 格式（个人资料文章页面）
+- 🧠 **智能提取**：检测 JSON-LD Person 类型并优先使用 og:title/og:image
+- 📅 **修复**：日期正则表达式改为不区分大小写（支持 FEB、Feb 等格式）
+- 👥 **多作者**：支持多作者显示
+- 🏷️ **品牌标识**：添加 "Powered By Activer" 署名
+- 📄 **PDF 署名**：生成的 PDF 底部添加品牌页脚
+- 🖼️ **文档优化**：README 添加预览图片
+
 ### v1.1.5 (2026-02-05)
 - 🎉 **版本升级**：次版本号提升，反映重大功能更新
 - 📄 **客户端 PDF 导出**：使用 pdfmake 直接生成高质量 PDF，无需打印对话框
@@ -296,7 +316,7 @@ chrome-plugin-substack/
 
 ## 🔮 未来计划
 
-### ✅ 已完成功能（v1.0.0 - v1.1.5）
+### ✅ 已完成功能（v1.0.0 - v1.1.6）
 - [x] **图片本地化**：ZIP 导出包含本地图片（v1.0.x）
 - [x] **Obsidian 集成**：一键保存到 Obsidian（v1.0.x）
 - [x] **自定义模板**：YAML Frontmatter + 文件名格式选择（v1.0.x）
@@ -308,6 +328,8 @@ chrome-plugin-substack/
 - [x] **UI/UX 全面升级**：沉浸式卡片、骨架屏、空状态（v1.1.5）
 - [x] **操作反馈优化**：所有按钮的状态提示（v1.1.5）
 - [x] **纯净模式**：过滤推广和营销内容（v1.1.5）
+- [x] **个人资料页面支持**：支持 /@username/p-xxx URL 格式（v1.1.6）
+- [x] **品牌标识**：添加 "Powered By Activer" 署名（v1.1.6）
 
 ### 🔄 进行中/计划中
 
@@ -358,5 +380,5 @@ MIT License
 ---
 
 **最后更新**: 2026-02-05
-**当前版本**: v1.1.5
+**当前版本**: v1.1.6
 **Happy Extracting! 🚀**

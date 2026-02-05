@@ -160,11 +160,16 @@ document.addEventListener('DOMContentLoaded', async () => {
     try {
       const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
 
-      // Basic URL checks
+      // Basic URL checks - support multiple Substack URL formats:
+      // 1. xxx.substack.com/p/xxx (standard)
+      // 2. substack.com/inbox/post/p-xxx (inbox)
+      // 3. substack.com/home/post/p-xxx (home)
+      // 4. substack.com/@username/p-xxx (profile post - NEW)
       const isSubstackUrl = tab.url && (
         tab.url.includes('substack.com') ||
         tab.url.match(/\/p\/[\w-]+/) ||
-        tab.url.includes('/home/post/')
+        tab.url.includes('/home/post/') ||
+        tab.url.match(/\/@[\w-]+\/p-\d+/)
       );
 
       if (!tab.url || !isSubstackUrl) {
@@ -183,6 +188,14 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (!jsonLdScript) return extractMetaDataFromDOM();
             try {
               const data = JSON.parse(jsonLdScript.textContent);
+
+              // 检查 JSON-LD 类型 - 如果是 Person 类型（用户资料页），则回退到 DOM/meta 提取
+              // 这种情况发生在 /@username/p-xxx 格式的 URL
+              if (data['@type'] === 'Person') {
+                console.log('[Injected] JSON-LD is Person type, falling back to meta tags');
+                return extractMetaDataFromDOM();
+              }
+
               return {
                 title: data.headline || '',
                 description: data.description || '',
@@ -200,22 +213,59 @@ document.addEventListener('DOMContentLoaded', async () => {
           }
 
           function extractMetaDataFromDOM() {
-            let title = document.title || '';
-            // Try to find better title if document.title is messy
-            const h1 = document.querySelector('h1');
-            if (h1) title = h1.textContent.trim();
+            // 优先从 og:title 获取标题
+            const ogTitle = document.querySelector('meta[property="og:title"]');
+            let title = ogTitle?.content || document.title || '';
+
+            // 如果 og:title 没有，尝试 h1
+            if (!title) {
+              const h1 = document.querySelector('h1');
+              if (h1) title = h1.textContent.trim();
+            }
+
+            console.log('[Injected] extractMetaDataFromDOM - title:', title);
 
             // 智能查找当前文章链接 - 用于定位作者和发布者
             let currentPostLink = null;
             const currentUrl = window.location.href;
 
-            // 策略1: 直接匹配当前 URL 的 /p/ 链接
-            const urlMatch = currentUrl.match(/\/p\/([a-z0-9-]+)/);
-            if (urlMatch) {
-              const postId = urlMatch[1];
-              currentPostLink = Array.from(document.querySelectorAll('a')).find(a =>
-                a.href && a.href.includes(`/p/${postId}`)
-              );
+            // 策略1a: 匹配 /@username/p-xxx 格式 (profile post)
+            const profileUrlMatch = currentUrl.match(/\/@[\w-]+\/p-(\d+)/);
+            if (profileUrlMatch) {
+              const postId = profileUrlMatch[1];
+              console.log('[Injected] Profile URL detected, postId:', postId);
+
+              // 查找包含 /p/ 的文章链接（不是 /p-xxx 格式，而是实际文章链接）
+              const articleLinks = Array.from(document.querySelectorAll('a[href*="/p/"]')).filter(a => {
+                const text = a.textContent?.trim() || '';
+                // 排除短文本链接（如导航、按钮等）
+                return text.length > 20 && !a.href.includes('utm_');
+              });
+
+              // 选择文本最长的作为标题链接
+              if (articleLinks.length > 0) {
+                currentPostLink = articleLinks.reduce((longest, current) => {
+                  const currentText = current.textContent?.trim() || '';
+                  const longestText = longest.textContent?.trim() || '';
+                  return currentText.length > longestText.length ? current : longest;
+                }, articleLinks[0]);
+
+                // 使用找到的链接文本作为标题
+                if (currentPostLink && currentPostLink.textContent.trim().length > title.length / 2) {
+                  title = currentPostLink.textContent.trim();
+                }
+              }
+            }
+
+            // 策略1b: 直接匹配当前 URL 的 /p/ 链接
+            if (!currentPostLink) {
+              const urlMatch = currentUrl.match(/\/p\/([a-z0-9-]+)/);
+              if (urlMatch) {
+                const postId = urlMatch[1];
+                currentPostLink = Array.from(document.querySelectorAll('a')).find(a =>
+                  a.href && a.href.includes(`/p/${postId}`)
+                );
+              }
             }
 
             // 策略2: 如果没找到，尝试通过标题匹配
@@ -299,8 +349,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (timeEl) {
               dateText = timeEl.getAttribute('datetime') || timeEl.textContent;
             } else {
-              // 回退：使用正则表达式查找 "Jan 29, 2026" 格式的日期
-              const dateRegex = /^[A-Z][a-z]{2}\s+\d{1,2},\s+\d{4}$/;
+              // 回退：使用正则表达式查找 "Jan 29, 2026" 或 "FEB 03, 2026" 格式的日期
+              const dateRegex = /^[A-Z][a-z]{2}\s+\d{1,2},\s+\d{4}$/i;
               const allElements = Array.from(document.querySelectorAll('*'));
               const dateElement = allElements.find(el => {
                 const text = el.textContent?.trim();
@@ -308,8 +358,32 @@ document.addEventListener('DOMContentLoaded', async () => {
               });
               if (dateElement) {
                 dateText = dateElement.textContent?.trim() || '';
+
+                // 策略：从日期元素附近查找作者 (/@username/p-xxx 页面结构)
+                // 日期的祖父元素通常包含作者链接
+                const dateParent = dateElement.parentElement?.parentElement;
+                if (dateParent && !authorName) {
+                  const nearbyAuthorLinks = Array.from(dateParent.querySelectorAll('a[href*="/@"]')).filter(a => {
+                    const text = a.textContent?.trim() || '';
+                    return text.length > 2 && text.length < 50 && !text.match(/^\d+[hmd]?$/);
+                  });
+                  if (nearbyAuthorLinks.length > 0) {
+                    // 获取所有作者
+                    const authors = nearbyAuthorLinks.map(a => ({
+                      name: a.textContent?.trim() || '',
+                      url: a.href || ''
+                    }));
+                    if (authors.length > 0) {
+                      authorName = authors.map(a => a.name).join(', ');
+                      authorLink = nearbyAuthorLinks[0];
+                      console.log('[Injected] Found authors from date parent:', authorName);
+                    }
+                  }
+                }
               }
             }
+
+            console.log('[Injected] extractMetaDataFromDOM - date:', dateText, 'author:', authorName);
 
             // 提取发布者名称
             let pubName = '';
@@ -1369,9 +1443,23 @@ document.addEventListener('DOMContentLoaded', async () => {
 
       // Small delay to ensure clipboard write finishes and UI updates
       setTimeout(() => {
-        window.open(uri, '_self');
-        showStatus('✅ Opening Obsidian...', 'success');
-        setButtonFeedback(btn, 'success', 'Opened');
+        // Try to open URI
+        window.location.href = uri;
+
+        // Detect success/failure via focus check
+        // If successful, the popup usually loses focus or closes.
+        // If failed (protocol not handled), the popup remains focused.
+        setTimeout(() => {
+          if (document.hasFocus()) {
+            // Still has focus -> likely failed
+            showStatus('Obsidian app not found', 'error');
+            setButtonFeedback(btn, 'error', 'No Obsidian');
+          } else {
+            // Lost focus -> likely success
+            showStatus('✅ Opening Obsidian...', 'success');
+            setButtonFeedback(btn, 'success', 'Opened');
+          }
+        }, 1500); // Wait 1.5s for system to react
       }, 200);
 
     } catch (e) {
