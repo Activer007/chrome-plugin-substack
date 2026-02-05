@@ -120,6 +120,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
   }
 
+  if (pdfFontFamilyEl) {
+    pdfFontFamilyEl.value = settings.pdfFontFamily;
+    pdfFontFamilyEl.addEventListener('change', () => {
+      settings.pdfFontFamily = pdfFontFamilyEl.value;
+      localStorage.setItem('pdfFontFamily', settings.pdfFontFamily);
+    });
+  }
+
   let articleData = null;
 
   // Helper: Button Feedback Animation
@@ -1640,51 +1648,44 @@ document.addEventListener('DOMContentLoaded', async () => {
 
       const docDefinition = generatePdfDefinition(articleData, imageMap, pdfOptions, imageDimensionsMap);
 
+      // Configure fonts (Always register all available fonts)
+      pdfMake.fonts = {
+        NotoSerifSC: {
+          normal: 'NotoSerifSC.subset.ttf',
+          bold: 'NotoSerifSC.subset.ttf',
+          italics: 'NotoSerifSC.subset.ttf',
+          bolditalics: 'NotoSerifSC.subset.ttf'
+        },
+        Roboto: {
+          normal: 'Roboto-Regular.ttf',
+          bold: 'Roboto-Bold.ttf',
+          italics: 'Roboto-Italic.ttf',
+          bolditalics: 'Roboto-BoldItalic.ttf'
+        },
+        // Fallback mapping for RobotoMono
+        RobotoMono: {
+          normal: 'Roboto-Regular.ttf',
+          bold: 'Roboto-Bold.ttf',
+          italics: 'Roboto-Italic.ttf',
+          bolditalics: 'Roboto-BoldItalic.ttf'
+        }
+      };
+
       // 3. Download
       const filename = generateFilename(articleData).replace(/\.md$/, ''); // Remove extension, pdfmake adds .pdf
 
-      // Configure fonts based on user selection
+      // Configure default font based on user selection
       const fontConfig = settings.pdfFontFamily;
-
-      if (fontConfig === 'default') {
-        // Use Noto Serif SC (supports Chinese but no bold)
-        pdfMake.fonts = {
-          NotoSerifSC: {
-            normal: 'NotoSerifSC.subset.ttf',
-            bold: 'NotoSerifSC.subset.ttf',
-            italics: 'NotoSerifSC.subset.ttf',
-            bolditalics: 'NotoSerifSC.subset.ttf'
-          },
-          Roboto: {
-            normal: 'Roboto-Regular.ttf',
-            bold: 'Roboto-Bold.ttf',
-            italics: 'Roboto-Italic.ttf',
-            bolditalics: 'Roboto-BoldItalic.ttf'
-          },
-          // Fallback mapping for RobotoMono
-          RobotoMono: {
-            normal: 'Roboto-Regular.ttf',
-            bold: 'Roboto-Bold.ttf',
-            italics: 'Roboto-Italic.ttf',
-            bolditalics: 'Roboto-BoldItalic.ttf'
-          }
-        };
-      } else {
-        // Use PDFMake built-in fonts (support bold but limited CJK)
-        // Built-in fonts don't need vfs_fonts.js
-        pdfMake.fonts = {
-          RobotoMono: {
-            normal: fontConfig,
-            bold: fontConfig + '-Bold',
-            italics: fontConfig + '-Italic',
-            bolditalics: fontConfig + '-BoldItalic'
-          }
-        };
-      }
 
       // Update defaultStyle in docDefinition to use selected font
       if (fontConfig !== 'default') {
         docDefinition.defaultStyle.font = fontConfig;
+
+        // Update header/link styles to use selected font if needed
+        // (Though typically they inherit or are set explicitly in markdown-pdf.js)
+        Object.values(docDefinition.styles).forEach(style => {
+           if (style.font) style.font = fontConfig;
+        });
       }
 
       pdfMake.createPdf(docDefinition).download(filename);
