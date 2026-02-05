@@ -526,6 +526,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
               // Skip utility elements
               if (el.classList.contains('button-wrapper') ||
+                  el.classList.contains('community-chat') ||
                   el.textContent.includes('Subscribe') ||
                   el.textContent.includes('Sign in')) return;
 
