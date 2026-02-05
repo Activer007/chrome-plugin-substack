@@ -51,17 +51,50 @@
 
     <!-- Settings Drawer -->
     <div id="settingsPanel" class="settings-drawer">
-      <label class="checkbox-wrapper" style="margin-bottom: 12px;">
-        <input type="checkbox" id="useFrontmatter" checked>
-        <span>Obsidian Frontmatter</span>
-      </label>
-      <div style="display: flex; align-items: center; justify-content: space-between; font-size: 13px;">
-        <span style="color: #666;">Filename</span>
-        <select id="filenameFormat">
-          <option value="title-date">Title-Date</option>
-          <option value="date-title">Date-Title</option>
-          <option value="author-title">Author-Title</option>
-        </select>
+      <div class="settings-section">
+        <h4 class="settings-title">General</h4>
+        <div class="setting-item">
+          <span class="setting-label">Filename</span>
+          <select id="filenameFormat" class="setting-input">
+            <option value="title-date">Title-Date</option>
+            <option value="date-title">Date-Title</option>
+            <option value="author-title">Author-Title</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="settings-section">
+        <h4 class="settings-title">Markdown / Obsidian</h4>
+        <label class="setting-item checkbox-wrapper">
+          <input type="checkbox" id="useFrontmatter" checked>
+          <span>Include Frontmatter</span>
+        </label>
+        <div class="setting-item" id="frontmatterTemplateContainer" style="display:none; margin-top:8px;">
+           <textarea id="frontmatterTemplate" class="setting-textarea" placeholder="tags: [substack]&#10;status: unread" rows="3"></textarea>
+           <div class="setting-hint">Variables: {title}, {url}, {date}, {author}</div>
+        </div>
+      </div>
+
+      <div class="settings-section">
+        <h4 class="settings-title">PDF Export</h4>
+        <div class="setting-row">
+          <label class="checkbox-wrapper">
+            <input type="checkbox" id="pdfShowCover" checked>
+            <span>Cover</span>
+          </label>
+          <label class="checkbox-wrapper">
+            <input type="checkbox" id="pdfShowFootnotes" checked>
+            <span>Footnotes</span>
+          </label>
+        </div>
+        <div class="setting-item">
+          <span class="setting-label">Font Size</span>
+          <select id="pdfFontSize" class="setting-input">
+            <option value="10">Small (10pt)</option>
+            <option value="11" selected>Medium (11pt)</option>
+            <option value="13">Large (13pt)</option>
+          </select>
+        </div>
       </div>
     </div>
 
@@ -79,8 +112,6 @@
           </div>
         </div>
       </div>
-
-      <!-- Settings Panel (REMOVED) -->
 
       <!-- Primary Actions: Side by Side -->
       <div class="primary-actions">

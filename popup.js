@@ -20,7 +20,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   const settingsPanel = document.getElementById('settingsPanel');
   const useFrontmatterEl = document.getElementById('useFrontmatter');
   const filenameFormatEl = document.getElementById('filenameFormat');
-  const imageModeEl = document.getElementById('imageMode');
+  // const imageModeEl = document.getElementById('imageMode'); // Removed
   const frontmatterTemplateEl = document.getElementById('frontmatterTemplate');
   const frontmatterTemplateContainer = document.getElementById('frontmatterTemplateContainer');
   const pdfShowCoverEl = document.getElementById('pdfShowCover');
@@ -36,7 +36,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   const settings = {
     filenameFormat: localStorage.getItem('filenameFormat') || 'title-date',
     useFrontmatter: localStorage.getItem('useFrontmatter') !== 'false', // Default true
-    imageMode: localStorage.getItem('imageMode') || 'url',
+    // imageMode: localStorage.getItem('imageMode') || 'url', // Removed
     frontmatterTemplate: localStorage.getItem('frontmatterTemplate') || '',
     pdfShowCover: localStorage.getItem('pdfShowCover') !== 'false', // Default true
     pdfShowFootnotes: localStorage.getItem('pdfShowFootnotes') !== 'false', // Default true
@@ -75,6 +75,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
   }
 
+  /* Removed Image Mode Listener
   if (imageModeEl) {
     imageModeEl.value = settings.imageMode;
     imageModeEl.addEventListener('change', () => {
@@ -82,6 +83,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       localStorage.setItem('imageMode', settings.imageMode);
     });
   }
+  */
 
   // PDF Settings
   if (pdfShowCoverEl) {
@@ -571,28 +573,55 @@ document.addEventListener('DOMContentLoaded', async () => {
     statusEl.className = `status ${type}`;
   }
 
-  function generateMarkdown(data) {
-    const useFrontmatter = useFrontmatterEl.checked;
+  function generateMarkdown(data, imageMap = null) {
+    const useFrontmatter = settings.useFrontmatter;
     const { meta, content, links } = data;
     let md = '';
 
     if (useFrontmatter) {
-       md += '---\n';
-       md += `title: "${(meta?.title || 'Untitled').replace(/"/g, '\\"')}"\n`;
-       if (meta?.authors?.length) {
-         md += `author: "${meta.authors.map(a => a.name).join(', ').replace(/"/g, '\\"')}"\n`;
+       // Custom Frontmatter Logic
+       const tmpl = settings.frontmatterTemplate;
+       if (tmpl && tmpl.trim()) {
+          let fm = tmpl;
+          const vars = {
+             title: (meta?.title || 'Untitled').replace(/"/g, '\\"'),
+             url: meta?.url || data.sourceUrl || '',
+             date: '',
+             author: (meta?.authors || []).map(a => a.name).join(', ').replace(/"/g, '\\"')
+          };
+
+          if (meta?.datePublished) {
+            try {
+              vars.date = new Date(meta.datePublished).toISOString().split('T')[0];
+            } catch(e) {}
+          }
+
+          // Replace variables
+          Object.keys(vars).forEach(k => {
+             // Regex to replace all occurrences of {key}
+             fm = fm.replace(new RegExp(`{${k}}`, 'g'), vars[k]);
+          });
+
+          md += '---\n' + fm + '\n---\n\n';
+       } else {
+          // Default Frontmatter
+          md += '---\n';
+          md += `title: "${(meta?.title || 'Untitled').replace(/"/g, '\\"')}"\n`;
+          if (meta?.authors?.length) {
+            md += `author: "${meta.authors.map(a => a.name).join(', ').replace(/"/g, '\\"')}"\n`;
+          }
+          if (meta?.datePublished) {
+            try {
+              md += `date: ${new Date(meta.datePublished).toISOString().split('T')[0]}\n`;
+            } catch(e) {}
+          }
+          md += `url: "${meta?.url || data.sourceUrl || ''}"\n`;
+          md += `tags: [substack, newsletter]\n`;
+          if (meta?.publisher?.name) {
+            md += `publisher: "${meta.publisher.name.replace(/"/g, '\\"')}"\n`;
+          }
+          md += '---\n\n';
        }
-       if (meta?.datePublished) {
-         try {
-           md += `date: ${new Date(meta.datePublished).toISOString().split('T')[0]}\n`;
-         } catch(e) {}
-       }
-       md += `url: "${meta?.url || data.sourceUrl || ''}"\n`;
-       md += `tags: [substack, newsletter]\n`;
-       if (meta?.publisher?.name) {
-         md += `publisher: "${meta.publisher.name.replace(/"/g, '\\"')}"\n`;
-       }
-       md += '---\n\n';
     }
 
     md += `# ${meta?.title || 'Untitled'}\n\n`;
@@ -612,7 +641,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     md += '---\n\n';
 
     if (meta?.image) {
-      md += `![Cover](${meta.image})\n\n`;
+      let coverSrc = meta.image;
+      if (imageMap && imageMap.has(coverSrc)) {
+         coverSrc = imageMap.get(coverSrc);
+      }
+      md += `![Cover](${coverSrc})\n\n`;
     }
 
     if (meta?.description) {
@@ -634,7 +667,14 @@ document.addEventListener('DOMContentLoaded', async () => {
           case 'blockquote': md += `> ${section.content}\n\n`; break;
           case 'code': md += '```\n' + section.content + '\n```\n\n'; break;
           case 'image':
-             md += `![${section.alt || 'Image'}](${section.content})\n\n`;
+             let imgSrc = section.content;
+             if (imageMap && imageMap.has(imgSrc)) {
+                imgSrc = imageMap.get(imgSrc);
+             }
+             // Local path for ZIP mode
+             // If imageMap has value 'assets/xxx.jpg', it uses that.
+             // If Base64 mode, it uses data URI.
+             md += `![${section.alt || 'Image'}](${imgSrc})\n\n`;
              break;
        }
     });
@@ -755,19 +795,12 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         // 3. Create modified data with local paths
         const localData = JSON.parse(JSON.stringify(articleData));
-
-        if (localData.meta?.image && imageMap.has(localData.meta.image)) {
-           localData.meta.image = imageMap.get(localData.meta.image);
-        }
-
-        localData.content.sections.forEach(s => {
-           if (s.type === 'image' && imageMap.has(s.content)) {
-              s.content = imageMap.get(s.content);
-           }
-        });
+        // We actually pass imageMap to generateMarkdown, so we don't strictly need localData modification,
+        // but generateMarkdown handles imageMap lookups.
 
         // 4. Generate Markdown and ZIP
-        const md = generateMarkdown(localData);
+        // Pass imageMap to use local asset paths
+        const md = generateMarkdown(localData, imageMap);
         zip.file(filename, md);
 
         const zipBlob = await zip.generateAsync({type:"blob"});
@@ -807,6 +840,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   function previewMarkdown() {
     if (!articleData) return;
+    // Preview uses default settings (no base64 usually)
     const md = generateMarkdown(articleData);
     markdownPreview.textContent = md;
     previewModal.style.display = 'flex';
@@ -1365,7 +1399,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       const uniqueUrls = [...new Set(urls)];
 
       if (uniqueUrls.length > 0) {
-        btn.innerHTML = `<span>Img (${uniqueUrls.length})...</span>`;
+        btn.innerHTML = `<span>Fetching images (${uniqueUrls.length})...</span>`;
         let downloadCount = 0;
 
         const promises = uniqueUrls.map(async (url) => {
@@ -1379,13 +1413,23 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
           }
           downloadCount++;
+          if (downloadCount % 5 === 0) {
+             btn.innerHTML = `<span>Fetching images (${downloadCount}/${uniqueUrls.length})...</span>`;
+          }
         });
         await Promise.all(promises);
       }
 
       // 2. Generate PDF Definition
       setButtonFeedback(btn, 'loading', 'Rendering...');
-      const docDefinition = generatePdfDefinition(articleData, imageMap);
+
+      const pdfOptions = {
+        showCover: settings.pdfShowCover,
+        showFootnotes: settings.pdfShowFootnotes,
+        fontSize: settings.pdfFontSize
+      };
+
+      const docDefinition = generatePdfDefinition(articleData, imageMap, pdfOptions);
 
       // 3. Download
       const filename = generateFilename(articleData).replace(/\.md$/, ''); // Remove extension, pdfmake adds .pdf
@@ -1393,6 +1437,13 @@ document.addEventListener('DOMContentLoaded', async () => {
       // Configure fonts
       pdfMake.fonts = {
         NotoSerifSC: {
+          normal: 'NotoSerifSC.subset.ttf',
+          bold: 'NotoSerifSC.subset.ttf',
+          italics: 'NotoSerifSC.subset.ttf',
+          bolditalics: 'NotoSerifSC.subset.ttf'
+        },
+        // Fallback mapping for RobotoMono to avoid "Font not defined" errors
+        RobotoMono: {
           normal: 'NotoSerifSC.subset.ttf',
           bold: 'NotoSerifSC.subset.ttf',
           italics: 'NotoSerifSC.subset.ttf',
