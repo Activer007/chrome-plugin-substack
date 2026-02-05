@@ -213,17 +213,24 @@ document.addEventListener('DOMContentLoaded', async () => {
           }
 
           function extractMetaDataFromDOM() {
-            // 优先从 og:title 获取标题
-            const ogTitle = document.querySelector('meta[property="og:title"]');
-            let title = ogTitle?.content || document.title || '';
+            // 优先从 meta 标签获取标题
+            const ogTitle = document.querySelector('meta[property="og:title"]')?.content;
+            const twitterTitle = document.querySelector('meta[name="twitter:title"]')?.content;
+            let title = ogTitle || twitterTitle || document.title || '';
 
-            // 如果 og:title 没有，尝试 h1
-            if (!title) {
-              const h1 = document.querySelector('h1');
+            // 清理标题 (移除 " | Substack" 等通用后缀)
+            // 如果是 document.title，通常会有后缀，尽量清理
+            if (!ogTitle && !twitterTitle && title) {
+               title = title.replace(/ \| Substack$/, '').replace(/ - .*?$/, '');
+            }
+
+            // 如果标题为空或非常短，尝试使用 h1
+            if (!title || title.length < 5) {
+              const h1 = document.querySelector('h1') || document.querySelector('.post-title');
               if (h1) title = h1.textContent.trim();
             }
 
-            console.log('[Injected] extractMetaDataFromDOM - title:', title);
+            console.log('[Injected] extractMetaDataFromDOM - Initial title:', title);
 
             // 智能查找当前文章链接 - 用于定位作者和发布者
             let currentPostLink = null;
@@ -235,14 +242,27 @@ document.addEventListener('DOMContentLoaded', async () => {
               const postId = profileUrlMatch[1];
               console.log('[Injected] Profile URL detected, postId:', postId);
 
-              // 查找包含 /p/ 的文章链接（不是 /p-xxx 格式，而是实际文章链接）
+              // 查找包含 /p/ 的文章链接
+              // 关键修复：增加排除侧边栏/推荐列表的逻辑
               const articleLinks = Array.from(document.querySelectorAll('a[href*="/p/"]')).filter(a => {
                 const text = a.textContent?.trim() || '';
+                const parentClasses = a.parentElement?.className || '';
+                const grandParentClasses = a.parentElement?.parentElement?.className || '';
+
+                // 排除常见侧边栏/推荐容器
+                if (parentClasses.includes('reader2-inbox-post') ||
+                    parentClasses.includes('linkRow') ||
+                    grandParentClasses.includes('recent-posts') ||
+                    a.closest('.sidebar') ||
+                    a.closest('.recommendations')) {
+                  return false;
+                }
+
                 // 排除短文本链接（如导航、按钮等）
-                return text.length > 20 && !a.href.includes('utm_');
+                return text.length > 10 && !a.href.includes('utm_');
               });
 
-              // 选择文本最长的作为标题链接
+              // 选择文本最长的作为当前文章链接（主要用于后续找作者）
               if (articleLinks.length > 0) {
                 currentPostLink = articleLinks.reduce((longest, current) => {
                   const currentText = current.textContent?.trim() || '';
@@ -250,9 +270,10 @@ document.addEventListener('DOMContentLoaded', async () => {
                   return currentText.length > longestText.length ? current : longest;
                 }, articleLinks[0]);
 
-                // 使用找到的链接文本作为标题
-                if (currentPostLink && currentPostLink.textContent.trim().length > title.length / 2) {
-                  title = currentPostLink.textContent.trim();
+                // 修复：不再轻易用链接文本覆盖 title
+                // 仅当 title 为空时才使用链接文本
+                if (!title && currentPostLink) {
+                   title = currentPostLink.textContent.trim();
                 }
               }
             }
