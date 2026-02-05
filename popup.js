@@ -26,6 +26,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   const pdfShowCoverEl = document.getElementById('pdfShowCover');
   const pdfShowFootnotesEl = document.getElementById('pdfShowFootnotes');
   const pdfFontSizeEl = document.getElementById('pdfFontSize');
+  const pdfFontFamilyEl = document.getElementById('pdfFontFamily');
 
   if (!statusEl || !extractBtn || !extractZipBtn || !previewBtn) {
     console.error('Missing required DOM elements');
@@ -40,7 +41,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     frontmatterTemplate: localStorage.getItem('frontmatterTemplate') || '',
     pdfShowCover: localStorage.getItem('pdfShowCover') !== 'false', // Default true
     pdfShowFootnotes: localStorage.getItem('pdfShowFootnotes') !== 'false', // Default true
-    pdfFontSize: localStorage.getItem('pdfFontSize') || '11'
+    pdfFontSize: localStorage.getItem('pdfFontSize') || '11',
+    pdfFontFamily: localStorage.getItem('pdfFontFamily') || 'default'
   };
 
   // Initialize Inputs
@@ -107,6 +109,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     pdfFontSizeEl.addEventListener('change', () => {
       settings.pdfFontSize = pdfFontSizeEl.value;
       localStorage.setItem('pdfFontSize', settings.pdfFontSize);
+    });
+  }
+
+  if (pdfFontFamilyEl) {
+    pdfFontFamilyEl.value = settings.pdfFontFamily;
+    pdfFontFamilyEl.addEventListener('change', () => {
+      settings.pdfFontFamily = pdfFontFamilyEl.value;
+      localStorage.setItem('pdfFontFamily', settings.pdfFontFamily);
     });
   }
 
@@ -473,13 +483,31 @@ document.addEventListener('DOMContentLoaded', async () => {
           }
 
           function htmlToMarkdown(element) {
-            const clone = element.cloneNode(true);
+            // 注意：移除 cloneNode，以便 getComputedStyle 能获取真实的计算样式
+            // const clone = element.cloneNode(true);
+
             const processNode = (node) => {
               if (node.nodeType === Node.TEXT_NODE) return node.textContent;
               if (node.nodeType !== Node.ELEMENT_NODE) return '';
 
               const tag = node.tagName.toLowerCase();
               const children = Array.from(node.childNodes).map(processNode).join('');
+
+              // 检测 CSS 粗体 (font-weight >= 600)
+              // 排除标题标签和本身就是粗体的标签，避免双重处理
+              let isCssBold = false;
+              if (tag !== 'strong' && tag !== 'b' && tag !== 'h1' && tag !== 'h2' && tag !== 'h3' && tag !== 'h4') {
+                try {
+                  const style = window.getComputedStyle(node);
+                  // Substack 通常使用 600 或 'bold'
+                  const weight = parseInt(style.fontWeight);
+                  if (weight >= 600 || style.fontWeight === 'bold') {
+                    isCssBold = true;
+                  }
+                } catch (e) {}
+              }
+
+              let result = children;
 
               switch (tag) {
                 case 'a':
@@ -499,15 +527,32 @@ document.addEventListener('DOMContentLoaded', async () => {
                       href = url.toString();
                     } catch (e) {}
                   }
-                  return href ? `[${children.trim()}](${href})` : children;
-                case 'strong': case 'b': return `**${children}**`;
-                case 'em': case 'i': return `*${children}*`;
-                case 'code': return `\`${children}\``;
-                case 'br': return '\n';
-                default: return children;
+                  result = href ? `[${children.trim()}](${href})` : children;
+                  break;
+                case 'strong': case 'b':
+                  result = `**${children}**`;
+                  break;
+                case 'em': case 'i':
+                  result = `*${children}*`;
+                  break;
+                case 'code':
+                  result = `\`${children}\``;
+                  break;
+                case 'br':
+                  result = '\n';
+                  break;
+                default:
+                  result = children;
               }
+
+              // 如果通过 CSS 检测到了粗体，且结果还没有被加粗
+              if (isCssBold && !result.startsWith('**')) {
+                return `**${result.trim()}**`;
+              }
+
+              return result;
             };
-            return processNode(clone).trim();
+            return processNode(element).trim();
           }
 
           function extractArticleContent() {
@@ -1598,22 +1643,43 @@ document.addEventListener('DOMContentLoaded', async () => {
       // 3. Download
       const filename = generateFilename(articleData).replace(/\.md$/, ''); // Remove extension, pdfmake adds .pdf
 
-      // Configure fonts
-      pdfMake.fonts = {
-        NotoSerifSC: {
-          normal: 'NotoSerifSC.subset.ttf',
-          bold: 'NotoSerifSC.subset.ttf',
-          italics: 'NotoSerifSC.subset.ttf',
-          bolditalics: 'NotoSerifSC.subset.ttf'
-        },
-        // Fallback mapping for RobotoMono to avoid "Font not defined" errors
-        RobotoMono: {
-          normal: 'NotoSerifSC.subset.ttf',
-          bold: 'NotoSerifSC.subset.ttf',
-          italics: 'NotoSerifSC.subset.ttf',
-          bolditalics: 'NotoSerifSC.subset.ttf'
-        }
-      };
+      // Configure fonts based on user selection
+      const fontConfig = settings.pdfFontFamily;
+
+      if (fontConfig === 'default') {
+        // Use Noto Serif SC (supports Chinese but no bold)
+        pdfMake.fonts = {
+          NotoSerifSC: {
+            normal: 'NotoSerifSC.subset.ttf',
+            bold: 'NotoSerifSC.subset.ttf',
+            italics: 'NotoSerifSC.subset.ttf',
+            bolditalics: 'NotoSerifSC.subset.ttf'
+          },
+          // Fallback mapping for RobotoMono
+          RobotoMono: {
+            normal: 'NotoSerifSC.subset.ttf',
+            bold: 'NotoSerifSC.subset.ttf',
+            italics: 'NotoSerifSC.subset.ttf',
+            bolditalics: 'NotoSerifSC.subset.ttf'
+          }
+        };
+      } else {
+        // Use PDFMake built-in fonts (support bold but limited CJK)
+        // Built-in fonts don't need vfs_fonts.js
+        pdfMake.fonts = {
+          RobotoMono: {
+            normal: fontConfig,
+            bold: fontConfig + '-Bold',
+            italics: fontConfig + '-Italic',
+            bolditalics: fontConfig + '-BoldItalic'
+          }
+        };
+      }
+
+      // Update defaultStyle in docDefinition to use selected font
+      if (fontConfig !== 'default') {
+        docDefinition.defaultStyle.font = fontConfig;
+      }
 
       pdfMake.createPdf(docDefinition).download(filename);
 

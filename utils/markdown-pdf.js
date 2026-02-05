@@ -345,7 +345,15 @@ function parseInlineMarkdown(text, isEnglishContent = false) {
 
       switch (type) {
         case 'bold':
-          tokens.push({ text: content, bold: true });
+          // 由于字体文件不支持粗体，使用 纯黑颜色 + 下划线 来进行视觉强调
+          tokens.push({
+            text: content,
+            bold: true,
+            color: '#000000', // 强制纯黑
+            decoration: 'underline', // 添加下划线区分
+            decorationStyle: 'solid',
+            decorationColor: '#000000'
+          });
           break;
         case 'italic':
           tokens.push({ text: content, italics: true });
