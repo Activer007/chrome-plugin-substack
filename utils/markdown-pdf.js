@@ -6,9 +6,10 @@
  * @param {boolean} options.showCover - Whether to include the cover image
  * @param {boolean} options.showFootnotes - Whether to include footnotes
  * @param {number} options.fontSize - Base font size (default 11)
+ * @param {Map} imageDimensionsMap - Map of image URLs to {width, height} dimensions
  * @returns {Object} PDFMake document definition
  */
-function generatePdfDefinition(articleData, imageMap, options = {}) {
+function generatePdfDefinition(articleData, imageMap, options = {}, imageDimensionsMap = new Map()) {
   // Default options
   const config = {
     showCover: options.showCover !== false,
@@ -16,11 +17,47 @@ function generatePdfDefinition(articleData, imageMap, options = {}) {
     fontSize: parseInt(options.fontSize) || 11
   };
 
+  // PDF 内容区最大宽度（考虑页边距后）
+  const MAX_IMAGE_WIDTH = 480;
+  const COVER_MAX_WIDTH = 500;
+
+  /**
+   * 根据图片实际尺寸计算 PDF 中的显示宽度
+   * 避免小图过度放大导致模糊
+   * @param {string} url - 原始图片 URL
+   * @param {number} maxWidth - 最大允许宽度
+   * @returns {number} 计算后的显示宽度
+   */
+  function calculateImageWidth(url, maxWidth) {
+    const dimensions = imageDimensionsMap.get(url);
+    if (!dimensions || !dimensions.width || dimensions.width <= 0) {
+      // 无尺寸信息时使用默认最大宽度
+      return maxWidth;
+    }
+
+    const actualWidth = dimensions.width;
+
+    // 如果原图宽度小于最大宽度，使用原图宽度（避免放大）
+    // 如果原图宽度大于最大宽度，缩小到最大宽度
+    if (actualWidth < maxWidth) {
+      // 对于特别小的图片（<200px），添加日志提醒
+      if (actualWidth < 200) {
+        console.log(`[PDF] Small image detected (${actualWidth}px), using original size to avoid blur`);
+      }
+      return actualWidth;
+    }
+
+    return maxWidth;
+  }
+
   // Determine if content is primarily English to apply smart quote cleanup
   // Simple heuristic: check if title contains CJK characters.
   // If NO CJK characters in title, assume English/Western content and clean up quotes.
   const hasCJK = /[\u4e00-\u9fa5\u3040-\u30ff\u3400-\u4dbf]/.test(articleData.meta.title || '');
   const isEnglishContent = !hasCJK;
+
+  // 动态选择默认字体：英文用 Roboto，中文用 NotoSerifSC
+  const defaultFont = isEnglishContent ? 'Roboto' : 'NotoSerifSC';
 
   /**
    * Helper to clean text based on language detection.
@@ -71,9 +108,10 @@ function generatePdfDefinition(articleData, imageMap, options = {}) {
   // 3. Cover Image
   if (config.showCover) {
     if (articleData.meta.image && imageMap.has(articleData.meta.image)) {
+      const coverWidth = calculateImageWidth(articleData.meta.image, COVER_MAX_WIDTH);
       content.push({
         image: imageMap.get(articleData.meta.image),
-        width: 500,
+        width: coverWidth,
         style: 'coverImage',
         alignment: 'center'
       });
@@ -105,9 +143,10 @@ function generatePdfDefinition(articleData, imageMap, options = {}) {
 
       case 'image':
         if (imageMap.has(section.content)) {
+          const imgWidth = calculateImageWidth(section.content, MAX_IMAGE_WIDTH);
           content.push({
             image: imageMap.get(section.content),
-            width: 480,
+            width: imgWidth,
             style: 'image',
             alignment: 'center'
           });
@@ -131,28 +170,37 @@ function generatePdfDefinition(articleData, imageMap, options = {}) {
         break;
 
       case 'blockquote':
+        // 使用 columns 布局实现左侧橙色边框效果
         content.push({
-          table: {
-            widths: ['*'],
-            body: [
-              [{
-                text: parseInlineMarkdown(section.content, isEnglishContent),
-                italics: true,
-                color: '#555555',
-                fillColor: '#f9f9f9'
-              }]
-            ]
-          },
-          layout: {
-             defaultBorder: false,
-             paddingLeft: function(i, node) { return 10; },
-             paddingRight: function(i, node) { return 10; },
-             paddingTop: function(i, node) { return 10; },
-             paddingBottom: function(i, node) { return 10; },
-             hLineWidth: function (i, node) { return 0; },
-             vLineWidth: function (i, node) { return i === 0 ? 3 : 0; },
-             vLineColor: function (i, node) { return '#cccccc'; }
-          },
+          columns: [
+            {
+              // 左侧橙色边框（使用 canvas 绘制矩形）
+              canvas: [
+                {
+                  type: 'rect',
+                  x: 0,
+                  y: 0,
+                  w: 4,
+                  h: 50, // 会被自动调整
+                  color: '#FF6719'
+                }
+              ],
+              width: 4
+            },
+            {
+              // 引用内容
+              stack: [
+                {
+                  text: parseInlineMarkdown(section.content, isEnglishContent),
+                  italics: true,
+                  color: '#555555',
+                  margin: [10, 0, 0, 0]
+                }
+              ],
+              fillColor: '#f9f9f9',
+              width: '*'
+            }
+          ],
           margin: [0, 10, 0, 10]
         });
         break;
@@ -216,17 +264,17 @@ function generatePdfDefinition(articleData, imageMap, options = {}) {
     },
     content: content,
     defaultStyle: {
-      font: 'NotoSerifSC',
+      font: defaultFont, // 使用动态选择的字体 (Roboto 或 NotoSerifSC)
       fontSize: config.fontSize,
       lineHeight: 1.5
     },
     styles: {
-      header: { fontSize: config.fontSize * 2.2, bold: true, margin: [0, 0, 0, 10], color: '#333333' },
-      subheader: { fontSize: config.fontSize + 1, color: '#666666', margin: [0, 0, 0, 5] },
-      link: { fontSize: config.fontSize - 1, color: '#007bff', decoration: 'underline', margin: [0, 0, 0, 20] },
-      h2: { fontSize: config.fontSize * 1.6, bold: true, margin: [0, 20, 0, 10], color: '#333333' },
-      h3: { fontSize: config.fontSize * 1.35, bold: true, margin: [0, 15, 0, 8], color: '#333333' },
-      h4: { fontSize: config.fontSize * 1.2, bold: true, margin: [0, 10, 0, 5], color: '#333333' },
+      header: { font: defaultFont, fontSize: config.fontSize * 2.2, bold: true, margin: [0, 0, 0, 10], color: '#333333' },
+      subheader: { font: defaultFont, fontSize: config.fontSize + 1, color: '#666666', margin: [0, 0, 0, 5] },
+      link: { font: defaultFont, fontSize: config.fontSize - 1, color: '#007bff', decoration: 'underline', margin: [0, 0, 0, 20] },
+      h2: { font: defaultFont, fontSize: config.fontSize * 1.6, bold: true, margin: [0, 20, 0, 10], color: '#333333' },
+      h3: { font: defaultFont, fontSize: config.fontSize * 1.35, bold: true, margin: [0, 15, 0, 8], color: '#333333' },
+      h4: { font: defaultFont, fontSize: config.fontSize * 1.2, bold: true, margin: [0, 10, 0, 5], color: '#333333' },
       text: { margin: [0, 0, 0, 10] },
       list: { margin: [0, 0, 0, 10] },
       caption: { fontSize: 9, color: '#666666', margin: [0, 5, 0, 15], italics: true },
@@ -300,7 +348,20 @@ function parseInlineMarkdown(text, isEnglishContent = false) {
 
       switch (type) {
         case 'bold':
-          tokens.push({ text: content, bold: true });
+          if (isEnglishContent) {
+            // 英文模式 (Roboto)：直接使用原生粗体
+            tokens.push({ text: content, bold: true });
+          } else {
+            // 中文模式 (Noto)：使用视觉增强 (黑色+下划线)
+            tokens.push({
+              text: content,
+              bold: true,
+              color: '#000000',
+              decoration: 'underline',
+              decorationStyle: 'solid',
+              decorationColor: '#000000'
+            });
+          }
           break;
         case 'italic':
           tokens.push({ text: content, italics: true });

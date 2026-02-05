@@ -26,6 +26,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   const pdfShowCoverEl = document.getElementById('pdfShowCover');
   const pdfShowFootnotesEl = document.getElementById('pdfShowFootnotes');
   const pdfFontSizeEl = document.getElementById('pdfFontSize');
+  const pdfFontFamilyEl = document.getElementById('pdfFontFamily');
 
   if (!statusEl || !extractBtn || !extractZipBtn || !previewBtn) {
     console.error('Missing required DOM elements');
@@ -40,7 +41,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     frontmatterTemplate: localStorage.getItem('frontmatterTemplate') || '',
     pdfShowCover: localStorage.getItem('pdfShowCover') !== 'false', // Default true
     pdfShowFootnotes: localStorage.getItem('pdfShowFootnotes') !== 'false', // Default true
-    pdfFontSize: localStorage.getItem('pdfFontSize') || '11'
+    pdfFontSize: localStorage.getItem('pdfFontSize') || '11',
+    pdfFontFamily: localStorage.getItem('pdfFontFamily') || 'default'
   };
 
   // Initialize Inputs
@@ -107,6 +109,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     pdfFontSizeEl.addEventListener('change', () => {
       settings.pdfFontSize = pdfFontSizeEl.value;
       localStorage.setItem('pdfFontSize', settings.pdfFontSize);
+    });
+  }
+
+  if (pdfFontFamilyEl) {
+    pdfFontFamilyEl.value = settings.pdfFontFamily;
+    pdfFontFamilyEl.addEventListener('change', () => {
+      settings.pdfFontFamily = pdfFontFamilyEl.value;
+      localStorage.setItem('pdfFontFamily', settings.pdfFontFamily);
     });
   }
 
@@ -213,17 +223,24 @@ document.addEventListener('DOMContentLoaded', async () => {
           }
 
           function extractMetaDataFromDOM() {
-            // 优先从 og:title 获取标题
-            const ogTitle = document.querySelector('meta[property="og:title"]');
-            let title = ogTitle?.content || document.title || '';
+            // 优先从 meta 标签获取标题
+            const ogTitle = document.querySelector('meta[property="og:title"]')?.content;
+            const twitterTitle = document.querySelector('meta[name="twitter:title"]')?.content;
+            let title = ogTitle || twitterTitle || document.title || '';
 
-            // 如果 og:title 没有，尝试 h1
-            if (!title) {
-              const h1 = document.querySelector('h1');
+            // 清理标题 (移除 " | Substack" 等通用后缀)
+            // 如果是 document.title，通常会有后缀，尽量清理
+            if (!ogTitle && !twitterTitle && title) {
+               title = title.replace(/ \| Substack$/, '').replace(/ - .*?$/, '');
+            }
+
+            // 如果标题为空或非常短，尝试使用 h1
+            if (!title || title.length < 5) {
+              const h1 = document.querySelector('h1') || document.querySelector('.post-title');
               if (h1) title = h1.textContent.trim();
             }
 
-            console.log('[Injected] extractMetaDataFromDOM - title:', title);
+            console.log('[Injected] extractMetaDataFromDOM - Initial title:', title);
 
             // 智能查找当前文章链接 - 用于定位作者和发布者
             let currentPostLink = null;
@@ -235,14 +252,27 @@ document.addEventListener('DOMContentLoaded', async () => {
               const postId = profileUrlMatch[1];
               console.log('[Injected] Profile URL detected, postId:', postId);
 
-              // 查找包含 /p/ 的文章链接（不是 /p-xxx 格式，而是实际文章链接）
+              // 查找包含 /p/ 的文章链接
+              // 关键修复：增加排除侧边栏/推荐列表的逻辑
               const articleLinks = Array.from(document.querySelectorAll('a[href*="/p/"]')).filter(a => {
                 const text = a.textContent?.trim() || '';
+                const parentClasses = a.parentElement?.className || '';
+                const grandParentClasses = a.parentElement?.parentElement?.className || '';
+
+                // 排除常见侧边栏/推荐容器
+                if (parentClasses.includes('reader2-inbox-post') ||
+                    parentClasses.includes('linkRow') ||
+                    grandParentClasses.includes('recent-posts') ||
+                    a.closest('.sidebar') ||
+                    a.closest('.recommendations')) {
+                  return false;
+                }
+
                 // 排除短文本链接（如导航、按钮等）
-                return text.length > 20 && !a.href.includes('utm_');
+                return text.length > 10 && !a.href.includes('utm_');
               });
 
-              // 选择文本最长的作为标题链接
+              // 选择文本最长的作为当前文章链接（主要用于后续找作者）
               if (articleLinks.length > 0) {
                 currentPostLink = articleLinks.reduce((longest, current) => {
                   const currentText = current.textContent?.trim() || '';
@@ -250,9 +280,10 @@ document.addEventListener('DOMContentLoaded', async () => {
                   return currentText.length > longestText.length ? current : longest;
                 }, articleLinks[0]);
 
-                // 使用找到的链接文本作为标题
-                if (currentPostLink && currentPostLink.textContent.trim().length > title.length / 2) {
-                  title = currentPostLink.textContent.trim();
+                // 修复：不再轻易用链接文本覆盖 title
+                // 仅当 title 为空时才使用链接文本
+                if (!title && currentPostLink) {
+                   title = currentPostLink.textContent.trim();
                 }
               }
             }
@@ -452,13 +483,31 @@ document.addEventListener('DOMContentLoaded', async () => {
           }
 
           function htmlToMarkdown(element) {
-            const clone = element.cloneNode(true);
+            // 注意：移除 cloneNode，以便 getComputedStyle 能获取真实的计算样式
+            // const clone = element.cloneNode(true);
+
             const processNode = (node) => {
               if (node.nodeType === Node.TEXT_NODE) return node.textContent;
               if (node.nodeType !== Node.ELEMENT_NODE) return '';
 
               const tag = node.tagName.toLowerCase();
               const children = Array.from(node.childNodes).map(processNode).join('');
+
+              // 检测 CSS 粗体 (font-weight >= 600)
+              // 排除标题标签和本身就是粗体的标签，避免双重处理
+              let isCssBold = false;
+              if (tag !== 'strong' && tag !== 'b' && tag !== 'h1' && tag !== 'h2' && tag !== 'h3' && tag !== 'h4') {
+                try {
+                  const style = window.getComputedStyle(node);
+                  // Substack 通常使用 600 或 'bold'
+                  const weight = parseInt(style.fontWeight);
+                  if (weight >= 600 || style.fontWeight === 'bold') {
+                    isCssBold = true;
+                  }
+                } catch (e) {}
+              }
+
+              let result = children;
 
               switch (tag) {
                 case 'a':
@@ -478,15 +527,32 @@ document.addEventListener('DOMContentLoaded', async () => {
                       href = url.toString();
                     } catch (e) {}
                   }
-                  return href ? `[${children.trim()}](${href})` : children;
-                case 'strong': case 'b': return `**${children}**`;
-                case 'em': case 'i': return `*${children}*`;
-                case 'code': return `\`${children}\``;
-                case 'br': return '\n';
-                default: return children;
+                  result = href ? `[${children.trim()}](${href})` : children;
+                  break;
+                case 'strong': case 'b':
+                  result = `**${children}**`;
+                  break;
+                case 'em': case 'i':
+                  result = `*${children}*`;
+                  break;
+                case 'code':
+                  result = `\`${children}\``;
+                  break;
+                case 'br':
+                  result = '\n';
+                  break;
+                default:
+                  result = children;
               }
+
+              // 如果通过 CSS 检测到了粗体，且结果还没有被加粗
+              if (isCssBold && !result.startsWith('**')) {
+                return `**${result.trim()}**`;
+              }
+
+              return result;
             };
-            return processNode(clone).trim();
+            return processNode(element).trim();
           }
 
           function extractArticleContent() {
@@ -505,6 +571,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
               // Skip utility elements
               if (el.classList.contains('button-wrapper') ||
+                  el.classList.contains('community-chat') ||
                   el.textContent.includes('Subscribe') ||
                   el.textContent.includes('Sign in')) return;
 
@@ -802,9 +869,53 @@ document.addEventListener('DOMContentLoaded', async () => {
      }
   }
 
+  /**
+   * 优化 Substack CDN 图片 URL，获取高分辨率版本
+   * 输入: https://substackcdn.com/image/fetch/w_140,h_140,.../https%3A%2F%2Fsubstack-post-media...
+   * 输出: https://substackcdn.com/image/fetch/w_1456,c_limit,f_auto,q_auto:best/.../原图URL
+   */
+  function optimizeSubstackImageUrl(url) {
+    if (!url) return url;
+
+    // 处理 substackcdn.com CDN 图片
+    if (url.includes('substackcdn.com/image/fetch')) {
+      // 替换尺寸参数为高分辨率版本
+      // 原始格式: /image/fetch/w_140,h_140,c_fill,f_auto,q_auto:good,fl_progressive:steep,g_auto/
+      // 优化格式: /image/fetch/w_1456,c_limit,f_auto,q_auto:best,fl_progressive:steep/
+      return url.replace(
+        /\/image\/fetch\/[^/]+\//,
+        '/image/fetch/w_1456,c_limit,f_auto,q_auto:best,fl_progressive:steep/'
+      );
+    }
+
+    return url;
+  }
+
+  /**
+   * 获取图片的实际尺寸（用于 PDF 渲染时避免小图过度放大）
+   * @param {string} base64 - Base64 编码的图片数据
+   * @returns {Promise<{width: number, height: number}>}
+   */
+  function getImageDimensions(base64) {
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.onload = () => {
+        resolve({ width: img.naturalWidth, height: img.naturalHeight });
+      };
+      img.onerror = () => {
+        resolve({ width: 0, height: 0 }); // 失败时返回0，使用默认宽度
+      };
+      img.src = base64;
+    });
+  }
+
   async function fetchImage(url) {
     try {
-      const response = await fetch(url);
+      // 先优化 URL 获取高分辨率版本
+      const optimizedUrl = optimizeSubstackImageUrl(url);
+      console.log('[Popup] Fetching image:', url === optimizedUrl ? url : `${url} -> ${optimizedUrl}`);
+
+      const response = await fetch(optimizedUrl);
       if (!response.ok) throw new Error('Fetch failed');
       return await response.blob();
     } catch (e) {
@@ -1184,8 +1295,12 @@ document.addEventListener('DOMContentLoaded', async () => {
                 }
 
                 blockquote {
-                  border-left: 3px solid #000 !important;
+                  border-left: 4px solid #FF6719 !important;
                   padding-left: 1em !important;
+                  background-color: #f9f9f9 !important;
+                  font-style: italic !important;
+                  margin: 1em 0 !important;
+                  padding: 0.5em 1em !important;
                 }
 
                 /* Remove all borders and shadows */
@@ -1477,8 +1592,9 @@ document.addEventListener('DOMContentLoaded', async () => {
       setButtonFeedback(btn, 'loading', 'Preparing...');
       showStatus('Preparing PDF resources...', 'info');
 
-      // 1. Fetch images and convert to Base64
+      // 1. Fetch images and convert to Base64, also get dimensions
       const imageMap = new Map();
+      const imageDimensionsMap = new Map(); // 存储图片实际尺寸
       const urls = [];
       if (articleData.meta?.image) urls.push(articleData.meta.image);
       articleData.content.sections.forEach(s => {
@@ -1496,6 +1612,11 @@ document.addEventListener('DOMContentLoaded', async () => {
             try {
               const base64 = await blobToBase64(blob);
               imageMap.set(url, base64);
+
+              // 获取图片实际尺寸
+              const dimensions = await getImageDimensions(base64);
+              imageDimensionsMap.set(url, dimensions);
+              console.log(`[Popup] Image dimensions for ${url.substring(0, 50)}...: ${dimensions.width}x${dimensions.height}`);
             } catch (e) {
               console.warn('Failed to convert blob to base64', url);
             }
@@ -1517,27 +1638,54 @@ document.addEventListener('DOMContentLoaded', async () => {
         fontSize: settings.pdfFontSize
       };
 
-      const docDefinition = generatePdfDefinition(articleData, imageMap, pdfOptions);
+      const docDefinition = generatePdfDefinition(articleData, imageMap, pdfOptions, imageDimensionsMap);
 
       // 3. Download
       const filename = generateFilename(articleData).replace(/\.md$/, ''); // Remove extension, pdfmake adds .pdf
 
-      // Configure fonts
-      pdfMake.fonts = {
-        NotoSerifSC: {
-          normal: 'NotoSerifSC.subset.ttf',
-          bold: 'NotoSerifSC.subset.ttf',
-          italics: 'NotoSerifSC.subset.ttf',
-          bolditalics: 'NotoSerifSC.subset.ttf'
-        },
-        // Fallback mapping for RobotoMono to avoid "Font not defined" errors
-        RobotoMono: {
-          normal: 'NotoSerifSC.subset.ttf',
-          bold: 'NotoSerifSC.subset.ttf',
-          italics: 'NotoSerifSC.subset.ttf',
-          bolditalics: 'NotoSerifSC.subset.ttf'
-        }
-      };
+      // Configure fonts based on user selection
+      const fontConfig = settings.pdfFontFamily;
+
+      if (fontConfig === 'default') {
+        // Use Noto Serif SC (supports Chinese but no bold)
+        pdfMake.fonts = {
+          NotoSerifSC: {
+            normal: 'NotoSerifSC.subset.ttf',
+            bold: 'NotoSerifSC.subset.ttf',
+            italics: 'NotoSerifSC.subset.ttf',
+            bolditalics: 'NotoSerifSC.subset.ttf'
+          },
+          Roboto: {
+            normal: 'Roboto-Regular.ttf',
+            bold: 'Roboto-Bold.ttf',
+            italics: 'Roboto-Italic.ttf',
+            bolditalics: 'Roboto-BoldItalic.ttf'
+          },
+          // Fallback mapping for RobotoMono
+          RobotoMono: {
+            normal: 'Roboto-Regular.ttf',
+            bold: 'Roboto-Bold.ttf',
+            italics: 'Roboto-Italic.ttf',
+            bolditalics: 'Roboto-BoldItalic.ttf'
+          }
+        };
+      } else {
+        // Use PDFMake built-in fonts (support bold but limited CJK)
+        // Built-in fonts don't need vfs_fonts.js
+        pdfMake.fonts = {
+          RobotoMono: {
+            normal: fontConfig,
+            bold: fontConfig + '-Bold',
+            italics: fontConfig + '-Italic',
+            bolditalics: fontConfig + '-BoldItalic'
+          }
+        };
+      }
+
+      // Update defaultStyle in docDefinition to use selected font
+      if (fontConfig !== 'default') {
+        docDefinition.defaultStyle.font = fontConfig;
+      }
 
       pdfMake.createPdf(docDefinition).download(filename);
 
