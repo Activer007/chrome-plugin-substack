@@ -10,7 +10,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   const extractZipBtn = document.getElementById('extractZipBtn');
   const copyBtn = document.getElementById('copyBtn');
   const pdfBtn = document.getElementById('pdfBtn');
-  const pdfDirectBtn = document.getElementById('pdfDirectBtn'); // Added definition
+  const pdfDirectBtn = document.getElementById('pdfDirectBtn');
   const obsidianBtn = document.getElementById('obsidianBtn');
   const previewBtn = document.getElementById('previewBtn');
   const previewModal = document.getElementById('previewModal');
@@ -36,6 +36,48 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   let articleData = null;
+
+  // Helper: Button Feedback Animation
+  function setButtonFeedback(btn, status, message) {
+    if (!btn) return;
+    // Save original content if not already saved
+    if (!btn.hasAttribute('data-original-html')) {
+      btn.setAttribute('data-original-html', btn.innerHTML);
+    }
+    const originalHTML = btn.getAttribute('data-original-html');
+
+    if (status === 'loading') {
+      btn.disabled = true;
+      // Preserve icon if possible, or just text
+      btn.innerHTML = `<span class="loading-dots">${message || 'Processing'}</span>`;
+    } else if (status === 'success') {
+      btn.innerHTML = `
+        <svg viewBox="0 0 24 24" style="width:16px;height:16px;margin-right:4px;vertical-align:text-bottom;display:inline-block;">
+          <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" fill="currentColor"/>
+        </svg>
+        <span>${message || 'Done'}</span>`;
+      btn.style.color = '#1e8e3e';
+      btn.style.borderColor = '#1e8e3e';
+
+      setTimeout(() => {
+        btn.innerHTML = originalHTML;
+        btn.style.color = '';
+        btn.style.borderColor = '';
+        btn.disabled = false;
+      }, 3000);
+    } else if (status === 'error') {
+      btn.innerHTML = `<span>Error</span>`;
+      btn.style.color = '#d32f2f';
+      btn.style.borderColor = '#d32f2f';
+
+      setTimeout(() => {
+        btn.innerHTML = originalHTML;
+        btn.style.color = '';
+        btn.style.borderColor = '';
+        btn.disabled = false;
+      }, 3000);
+    }
+  }
 
   // Check Page & Extract Data
   async function checkPage() {
@@ -590,9 +632,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const activeBtn = isZipMode ? extractZipBtn : extractBtn;
 
     try {
-      activeBtn.disabled = true;
-      const originalText = activeBtn.innerHTML;
-      activeBtn.innerHTML = isZipMode ? 'Initializing...' : 'Processing...';
+      setButtonFeedback(activeBtn, 'loading', isZipMode ? 'Packing...' : 'Generating...');
 
       const filename = generateFilename(articleData);
 
@@ -617,19 +657,14 @@ document.addEventListener('DOMContentLoaded', async () => {
         const uniqueUrls = [...new Set(urls)];
 
         // 2. Download images
-        activeBtn.innerHTML = `Downloading ${uniqueUrls.length} images...`;
+        if (uniqueUrls.length > 0) {
+           activeBtn.innerHTML = `<span>Img (${uniqueUrls.length})...</span>`;
+        }
+
         let downloadCount = 0;
-
         const downloadPromises = uniqueUrls.map(async (url, index) => {
-           // Update progress (approximate since parallel)
-           downloadCount++;
-           if (downloadCount % 5 === 0 || downloadCount === uniqueUrls.length) {
-              activeBtn.innerHTML = `Downloading images (${downloadCount}/${uniqueUrls.length})...`;
-           }
-
            const blob = await fetchImage(url);
            if (blob) {
-             // Generate extension from blob type or URL
              let ext = 'jpg';
              if (blob.type === 'image/png') ext = 'png';
              else if (blob.type === 'image/gif') ext = 'gif';
@@ -640,6 +675,7 @@ document.addEventListener('DOMContentLoaded', async () => {
              assetsFolder.file(imgName, blob);
              imageMap.set(url, `assets/${imgName}`);
            }
+           downloadCount++;
         });
 
         await Promise.all(downloadPromises);
@@ -658,9 +694,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
 
         // 4. Generate Markdown and ZIP
-        activeBtn.innerHTML = 'Compressing...';
         const md = generateMarkdown(localData);
-        zip.file(filename, md); // Use the same filename inside the zip
+        zip.file(filename, md);
 
         const zipBlob = await zip.generateAsync({type:"blob"});
         const zipName = filename.replace(/\.md$/, '') + '.zip';
@@ -688,14 +723,12 @@ document.addEventListener('DOMContentLoaded', async () => {
       }
 
       showStatus(isZipMode ? 'ZIP Downloaded!' : 'Markdown Downloaded!', 'success');
-      activeBtn.innerHTML = originalText;
+      setButtonFeedback(activeBtn, 'success', 'Saved');
 
     } catch (e) {
       console.error(e);
       showStatus('Error: ' + e.message, 'error');
-      activeBtn.innerHTML = originalText;
-    } finally {
-      activeBtn.disabled = false;
+      setButtonFeedback(activeBtn, 'error', 'Failed');
     }
   }
 
@@ -924,6 +957,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 article > *:first-child {
                   margin-top: 0 !important;
                   padding-top: 0 !important;
+                  padding-left: 0 !important;
                 }
 
                 main, article, .body.markup, .single-post {
@@ -1211,7 +1245,11 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   async function saveToObsidian() {
     if (!articleData) return;
+    const btn = document.getElementById('obsidianBtn');
+
     try {
+      setButtonFeedback(btn, 'loading', 'Opening...');
+
       const md = generateMarkdown(articleData);
       const filename = generateFilename(articleData).replace(/\.md$/, '');
 
@@ -1221,17 +1259,18 @@ document.addEventListener('DOMContentLoaded', async () => {
       // 2. Open Obsidian URI
       // clipboard=true tells Obsidian to use clipboard content for the new note
       const uri = `obsidian://new?file=${encodeURIComponent(filename)}&clipboard=true`;
-      window.open(uri, '_self');
 
-      showStatus('✅ Sent to Obsidian!', 'success');
+      // Small delay to ensure clipboard write finishes and UI updates
       setTimeout(() => {
-        if (statusEl.textContent.includes('Obsidian')) {
-           showStatus('Article detected', 'success');
-        }
-      }, 3000);
+        window.open(uri, '_self');
+        showStatus('✅ Opening Obsidian...', 'success');
+        setButtonFeedback(btn, 'success', 'Opened');
+      }, 200);
+
     } catch (e) {
       console.error(e);
       showStatus('Obsidian Error: ' + e.message, 'error');
+      setButtonFeedback(btn, 'error', 'Error');
     }
   }
 
@@ -1240,9 +1279,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const btn = document.getElementById('pdfDirectBtn');
 
     try {
-      btn.disabled = true;
-      const originalText = btn.innerHTML;
-      btn.innerHTML = '<span>Processing...</span>';
+      setButtonFeedback(btn, 'loading', 'Preparing...');
       showStatus('Preparing PDF resources...', 'info');
 
       // 1. Fetch images and convert to Base64
@@ -1255,7 +1292,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       const uniqueUrls = [...new Set(urls)];
 
       if (uniqueUrls.length > 0) {
-        btn.innerHTML = `<span>Fetching images (${uniqueUrls.length})...</span>`;
+        btn.innerHTML = `<span>Img (${uniqueUrls.length})...</span>`;
         let downloadCount = 0;
 
         const promises = uniqueUrls.map(async (url) => {
@@ -1269,15 +1306,12 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
           }
           downloadCount++;
-          if (downloadCount % 5 === 0) {
-             btn.innerHTML = `<span>Fetching images (${downloadCount}/${uniqueUrls.length})...</span>`;
-          }
         });
         await Promise.all(promises);
       }
 
       // 2. Generate PDF Definition
-      btn.innerHTML = '<span>Generating PDF...</span>';
+      setButtonFeedback(btn, 'loading', 'Rendering...');
       const docDefinition = generatePdfDefinition(articleData, imageMap);
 
       // 3. Download
@@ -1286,24 +1320,24 @@ document.addEventListener('DOMContentLoaded', async () => {
       // Configure fonts
       pdfMake.fonts = {
         NotoSerifSC: {
-          normal: 'NotoSerifSC.ttf',
-          bold: 'NotoSerifSC.ttf',
-          italics: 'NotoSerifSC.ttf',
-          bolditalics: 'NotoSerifSC.ttf'
+          normal: 'NotoSerifSC.subset.ttf',
+          bold: 'NotoSerifSC.subset.ttf',
+          italics: 'NotoSerifSC.subset.ttf',
+          bolditalics: 'NotoSerifSC.subset.ttf'
         }
       };
 
       pdfMake.createPdf(docDefinition).download(filename);
 
       showStatus('PDF Downloaded!', 'success');
-      btn.innerHTML = originalText;
+      setButtonFeedback(btn, 'success', 'Exported');
 
     } catch (e) {
       console.error(e);
       showStatus('PDF Error: ' + e.message, 'error');
-      btn.innerHTML = originalText; // Restore text
+      setButtonFeedback(btn, 'error', 'Failed');
     } finally {
-      btn.disabled = false;
+      // Don't enable immediately if success logic handles reset
     }
   }
 
