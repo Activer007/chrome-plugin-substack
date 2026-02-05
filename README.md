@@ -1,5 +1,7 @@
 # Substack to Markdown Chrome 插件
 
+![Plugin Preview](images/pic.jpg)
+
 一个强大的 Chrome 浏览器插件，用于从 Substack 文章页面提取标题、作者、日期、内容等信息并保存为 Markdown 格式。
 
 ## ✨ 功能特性
