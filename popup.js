@@ -20,18 +20,91 @@ document.addEventListener('DOMContentLoaded', async () => {
   const settingsPanel = document.getElementById('settingsPanel');
   const useFrontmatterEl = document.getElementById('useFrontmatter');
   const filenameFormatEl = document.getElementById('filenameFormat');
+  const imageModeEl = document.getElementById('imageMode');
+  const frontmatterTemplateEl = document.getElementById('frontmatterTemplate');
+  const frontmatterTemplateContainer = document.getElementById('frontmatterTemplateContainer');
+  const pdfShowCoverEl = document.getElementById('pdfShowCover');
+  const pdfShowFootnotesEl = document.getElementById('pdfShowFootnotes');
+  const pdfFontSizeEl = document.getElementById('pdfFontSize');
 
   if (!statusEl || !extractBtn || !extractZipBtn || !previewBtn) {
     console.error('Missing required DOM elements');
     return;
   }
 
-  // Load settings
-  const savedFormat = localStorage.getItem('filenameFormat') || 'title-date';
+  // --- Load Settings ---
+  const settings = {
+    filenameFormat: localStorage.getItem('filenameFormat') || 'title-date',
+    useFrontmatter: localStorage.getItem('useFrontmatter') !== 'false', // Default true
+    imageMode: localStorage.getItem('imageMode') || 'url',
+    frontmatterTemplate: localStorage.getItem('frontmatterTemplate') || '',
+    pdfShowCover: localStorage.getItem('pdfShowCover') !== 'false', // Default true
+    pdfShowFootnotes: localStorage.getItem('pdfShowFootnotes') !== 'false', // Default true
+    pdfFontSize: localStorage.getItem('pdfFontSize') || '11'
+  };
+
+  // Initialize Inputs
   if (filenameFormatEl) {
-    filenameFormatEl.value = savedFormat;
+    filenameFormatEl.value = settings.filenameFormat;
     filenameFormatEl.addEventListener('change', () => {
-      localStorage.setItem('filenameFormat', filenameFormatEl.value);
+      settings.filenameFormat = filenameFormatEl.value;
+      localStorage.setItem('filenameFormat', settings.filenameFormat);
+    });
+  }
+
+  if (useFrontmatterEl) {
+    useFrontmatterEl.checked = settings.useFrontmatter;
+    if (frontmatterTemplateContainer) {
+        frontmatterTemplateContainer.style.display = settings.useFrontmatter ? 'block' : 'none';
+    }
+
+    useFrontmatterEl.addEventListener('change', () => {
+      settings.useFrontmatter = useFrontmatterEl.checked;
+      localStorage.setItem('useFrontmatter', settings.useFrontmatter);
+      if (frontmatterTemplateContainer) {
+        frontmatterTemplateContainer.style.display = settings.useFrontmatter ? 'block' : 'none';
+      }
+    });
+  }
+
+  if (frontmatterTemplateEl) {
+    frontmatterTemplateEl.value = settings.frontmatterTemplate;
+    frontmatterTemplateEl.addEventListener('input', () => {
+      settings.frontmatterTemplate = frontmatterTemplateEl.value;
+      localStorage.setItem('frontmatterTemplate', settings.frontmatterTemplate);
+    });
+  }
+
+  if (imageModeEl) {
+    imageModeEl.value = settings.imageMode;
+    imageModeEl.addEventListener('change', () => {
+      settings.imageMode = imageModeEl.value;
+      localStorage.setItem('imageMode', settings.imageMode);
+    });
+  }
+
+  // PDF Settings
+  if (pdfShowCoverEl) {
+    pdfShowCoverEl.checked = settings.pdfShowCover;
+    pdfShowCoverEl.addEventListener('change', () => {
+      settings.pdfShowCover = pdfShowCoverEl.checked;
+      localStorage.setItem('pdfShowCover', settings.pdfShowCover);
+    });
+  }
+
+  if (pdfShowFootnotesEl) {
+    pdfShowFootnotesEl.checked = settings.pdfShowFootnotes;
+    pdfShowFootnotesEl.addEventListener('change', () => {
+      settings.pdfShowFootnotes = pdfShowFootnotesEl.checked;
+      localStorage.setItem('pdfShowFootnotes', settings.pdfShowFootnotes);
+    });
+  }
+
+  if (pdfFontSizeEl) {
+    pdfFontSizeEl.value = settings.pdfFontSize;
+    pdfFontSizeEl.addEventListener('change', () => {
+      settings.pdfFontSize = pdfFontSizeEl.value;
+      localStorage.setItem('pdfFontSize', settings.pdfFontSize);
     });
   }
 
