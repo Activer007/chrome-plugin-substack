@@ -120,6 +120,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
   }
 
+  if (pdfFontFamilyEl) {
+    pdfFontFamilyEl.value = settings.pdfFontFamily;
+    pdfFontFamilyEl.addEventListener('change', () => {
+      settings.pdfFontFamily = pdfFontFamilyEl.value;
+      localStorage.setItem('pdfFontFamily', settings.pdfFontFamily);
+    });
+  }
+
   let articleData = null;
 
   // Helper: Button Feedback Animation
