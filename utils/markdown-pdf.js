@@ -173,26 +173,26 @@ function generatePdfDefinition(articleData, imageMap, options = {}, imageDimensi
             body: [
               [{
                 text: parseInlineMarkdown(section.content, isEnglishContent),
-                italics: false, // 移除斜体
-                color: '#333333', // 颜色加深一点
-                // fillColor: '#f9f9f9' // 移除背景色
+                italics: true, // 恢复斜体
+                color: '#555555',
+                fillColor: '#f9f9f9' // 恢复灰色背景
               }]
             ]
           },
           layout: {
              defaultBorder: false,
-             // 调整 padding
-             paddingLeft: function(i, node) { return 15; }, // 增加左侧间距
-             paddingRight: function(i, node) { return 0; },
-             paddingTop: function(i, node) { return 0; },
-             paddingBottom: function(i, node) { return 0; },
+             // 内边距
+             paddingLeft: function(i, node) { return 15; },
+             paddingRight: function(i, node) { return 10; },
+             paddingTop: function(i, node) { return 10; },
+             paddingBottom: function(i, node) { return 10; },
              // 线宽
              hLineWidth: function (i, node) { return 0; },
              vLineWidth: function (i, node) { return i === 0 ? 4 : 0; }, // 左侧 4px
              // 线颜色 - Substack 橙色
              vLineColor: function (i, node) { return '#FF6719'; }
           },
-          margin: [0, 15, 0, 15]
+          margin: [0, 10, 0, 10]
         });
         break;
 
