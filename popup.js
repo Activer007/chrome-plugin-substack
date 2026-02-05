@@ -1443,9 +1443,23 @@ document.addEventListener('DOMContentLoaded', async () => {
 
       // Small delay to ensure clipboard write finishes and UI updates
       setTimeout(() => {
-        window.open(uri, '_self');
-        showStatus('✅ Opening Obsidian...', 'success');
-        setButtonFeedback(btn, 'success', 'Opened');
+        // Try to open URI
+        window.location.href = uri;
+
+        // Detect success/failure via focus check
+        // If successful, the popup usually loses focus or closes.
+        // If failed (protocol not handled), the popup remains focused.
+        setTimeout(() => {
+          if (document.hasFocus()) {
+            // Still has focus -> likely failed
+            showStatus('Obsidian app not found', 'error');
+            setButtonFeedback(btn, 'error', 'No Obsidian');
+          } else {
+            // Lost focus -> likely success
+            showStatus('✅ Opening Obsidian...', 'success');
+            setButtonFeedback(btn, 'success', 'Opened');
+          }
+        }, 1500); // Wait 1.5s for system to react
       }, 200);
 
     } catch (e) {
