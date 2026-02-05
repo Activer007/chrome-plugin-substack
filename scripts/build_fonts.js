@@ -2,7 +2,7 @@ const fs = require('fs');
 const path = require('path');
 
 // Configuration
-const FONT_FILE = 'SourceHanSerif.ttf'; // Source font in root
+const FONT_FILE = 'NotoSerifSC.subset.ttf'; // Source font in root
 const OUTPUT_FILE = 'libs/vfs_fonts.js';              // Output destination
 
 // Read and convert

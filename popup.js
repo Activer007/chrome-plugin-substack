@@ -1285,11 +1285,11 @@ document.addEventListener('DOMContentLoaded', async () => {
 
       // Configure fonts
       pdfMake.fonts = {
-        SourceHanSerif: {
-          normal: 'SourceHanSerif.ttf',
-          bold: 'SourceHanSerif.ttf',
-          italics: 'SourceHanSerif.ttf',
-          bolditalics: 'SourceHanSerif.ttf'
+        NotoSerifSC: {
+          normal: 'NotoSerifSC.ttf',
+          bold: 'NotoSerifSC.ttf',
+          italics: 'NotoSerifSC.ttf',
+          bolditalics: 'NotoSerifSC.ttf'
         }
       };
 
