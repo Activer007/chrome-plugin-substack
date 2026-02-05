@@ -5,18 +5,38 @@
  * @returns {Object} PDFMake document definition
  */
 function generatePdfDefinition(articleData, imageMap) {
+  // Determine if content is primarily English to apply smart quote cleanup
+  // Simple heuristic: check if title contains CJK characters.
+  // If NO CJK characters in title, assume English/Western content and clean up quotes.
+  const hasCJK = /[\u4e00-\u9fa5\u3040-\u30ff\u3400-\u4dbf]/.test(articleData.meta.title || '');
+  const isEnglishContent = !hasCJK;
+
+  /**
+   * Helper to clean text based on language detection.
+   * If English content is detected, replace smart quotes with straight quotes
+   * to avoid spacing issues with CJK fonts.
+   */
+  const cleanText = (text) => {
+    if (!text) return '';
+    if (isEnglishContent) {
+      return text.replace(/[\u2018\u2019]/g, "'") // ’ ‘ -> '
+                 .replace(/[\u201C\u201D]/g, '"'); // “ ” -> "
+    }
+    return text;
+  };
+
   const content = [];
 
   // 1. Title
   content.push({
-    text: articleData.meta.title || 'Untitled',
+    text: cleanText(articleData.meta.title || 'Untitled'),
     style: 'header'
   });
 
   // 2. Metadata (Author, Date, URL)
   const metaParts = [];
   if (articleData.meta.authors && articleData.meta.authors.length) {
-    metaParts.push(articleData.meta.authors.map(a => a.name).join(', '));
+    metaParts.push(cleanText(articleData.meta.authors.map(a => a.name).join(', ')));
   }
   if (articleData.meta.datePublished) {
     try {
@@ -55,19 +75,19 @@ function generatePdfDefinition(articleData, imageMap) {
   articleData.content.sections.forEach(section => {
     switch(section.type) {
       case 'h2':
-        content.push({ text: section.content, style: 'h2', pageBreak: 'before' }); // Optional page break for H2
+        content.push({ text: cleanText(section.content), style: 'h2', pageBreak: 'before' }); // Optional page break for H2
         break;
       case 'h3':
-        content.push({ text: section.content, style: 'h3' });
+        content.push({ text: cleanText(section.content), style: 'h3' });
         break;
       case 'h4':
-        content.push({ text: section.content, style: 'h4' });
+        content.push({ text: cleanText(section.content), style: 'h4' });
         break;
 
       case 'paragraph':
         if (section.content) {
           content.push({
-            text: parseInlineMarkdown(section.content),
+            text: parseInlineMarkdown(section.content, isEnglishContent),
             style: 'text'
           });
         }
@@ -82,14 +102,14 @@ function generatePdfDefinition(articleData, imageMap) {
             alignment: 'center'
           });
           if (section.alt) {
-            content.push({ text: section.alt, style: 'caption', alignment: 'center' });
+            content.push({ text: cleanText(section.alt), style: 'caption', alignment: 'center' });
           }
         }
         break;
 
       case 'list':
         const listItems = section.content.map(item => ({
-          text: parseInlineMarkdown(item),
+          text: parseInlineMarkdown(item, isEnglishContent),
           margin: [0, 4, 0, 4]
         }));
 
@@ -106,7 +126,7 @@ function generatePdfDefinition(articleData, imageMap) {
             widths: ['*'],
             body: [
               [{
-                text: parseInlineMarkdown(section.content),
+                text: parseInlineMarkdown(section.content, isEnglishContent),
                 italics: true,
                 color: '#555555',
                 fillColor: '#f9f9f9'
@@ -133,7 +153,7 @@ function generatePdfDefinition(articleData, imageMap) {
             widths: ['*'],
             body: [
               [{
-                text: section.content,
+                text: section.content, // Code usually shouldn't be smart-quote replaced
                 font: 'RobotoMono', // Fallback to monospace if available, or just regular
                 fontSize: 10,
                 preserveLeadingSpaces: true
@@ -155,7 +175,7 @@ function generatePdfDefinition(articleData, imageMap) {
       content.push({
         text: [
           { text: `${fn.id}. `, bold: true },
-          parseInlineMarkdown(fn.content)
+          parseInlineMarkdown(fn.content, isEnglishContent)
         ],
         style: 'footnote',
         margin: [0, 2, 0, 2]
@@ -174,7 +194,7 @@ function generatePdfDefinition(articleData, imageMap) {
     },
     content: content,
     defaultStyle: {
-      font: 'SourceHanSerif',
+      font: 'NotoSerifSC',
       fontSize: 11,
       lineHeight: 1.5
     },
@@ -199,15 +219,17 @@ function generatePdfDefinition(articleData, imageMap) {
  * using a custom regex parser for better control and reliability.
  * Also cleans up characters like smart quotes.
  * @param {string} text - The text string
+ * @param {boolean} isEnglishContent - Whether to apply aggressive quote replacement
  * @returns {Array} - Array of text objects
  */
-function parseInlineMarkdown(text) {
+function parseInlineMarkdown(text, isEnglishContent = false) {
   if (!text) return { text: '' };
 
-  // 1. Clean up characters
-  // Replace smart quotes with straight quotes to fix spacing issues in Chinese fonts
-  text = text.replace(/[\u2018\u2019]/g, "'") // ’ ‘ -> '
-             .replace(/[\u201C\u201D]/g, '"'); // “ ” -> "
+  // 1. Clean up characters if English content
+  if (isEnglishContent) {
+    text = text.replace(/[\u2018\u2019]/g, "'") // ’ ‘ -> '
+               .replace(/[\u201C\u201D]/g, '"'); // “ ” -> "
+  }
 
   // 2. Simple Recursive Parser
   // We use a simple regex approach to find the first matching token,
