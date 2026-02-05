@@ -167,31 +167,37 @@ function generatePdfDefinition(articleData, imageMap, options = {}, imageDimensi
         break;
 
       case 'blockquote':
+        // 使用 columns 布局实现左侧橙色边框效果
         content.push({
-          table: {
-            widths: ['*'],
-            body: [
-              [{
-                text: parseInlineMarkdown(section.content, isEnglishContent),
-                italics: true, // 恢复斜体
-                color: '#555555',
-                fillColor: '#f9f9f9' // 恢复灰色背景
-              }]
-            ]
-          },
-          layout: {
-             defaultBorder: false,
-             // 内边距
-             paddingLeft: function(i, node) { return 15; },
-             paddingRight: function(i, node) { return 10; },
-             paddingTop: function(i, node) { return 10; },
-             paddingBottom: function(i, node) { return 10; },
-             // 线宽
-             hLineWidth: function (i, node) { return 0; },
-             vLineWidth: function (i, node) { return i === 0 ? 4 : 0; }, // 左侧 4px
-             // 线颜色 - Substack 橙色
-             vLineColor: function (i, node) { return '#FF6719'; }
-          },
+          columns: [
+            {
+              // 左侧橙色边框（使用 canvas 绘制矩形）
+              canvas: [
+                {
+                  type: 'rect',
+                  x: 0,
+                  y: 0,
+                  w: 4,
+                  h: 50, // 会被自动调整
+                  color: '#FF6719'
+                }
+              ],
+              width: 4
+            },
+            {
+              // 引用内容
+              stack: [
+                {
+                  text: parseInlineMarkdown(section.content, isEnglishContent),
+                  italics: true,
+                  color: '#555555',
+                  margin: [10, 0, 0, 0]
+                }
+              ],
+              fillColor: '#f9f9f9',
+              width: '*'
+            }
+          ],
           margin: [0, 10, 0, 10]
         });
         break;

@@ -1250,8 +1250,12 @@ document.addEventListener('DOMContentLoaded', async () => {
                 }
 
                 blockquote {
-                  border-left: 3px solid #000 !important;
+                  border-left: 4px solid #FF6719 !important;
                   padding-left: 1em !important;
+                  background-color: #f9f9f9 !important;
+                  font-style: italic !important;
+                  margin: 1em 0 !important;
+                  padding: 0.5em 1em !important;
                 }
 
                 /* Remove all borders and shadows */
