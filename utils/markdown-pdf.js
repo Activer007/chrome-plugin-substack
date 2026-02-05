@@ -56,6 +56,9 @@ function generatePdfDefinition(articleData, imageMap, options = {}, imageDimensi
   const hasCJK = /[\u4e00-\u9fa5\u3040-\u30ff\u3400-\u4dbf]/.test(articleData.meta.title || '');
   const isEnglishContent = !hasCJK;
 
+  // 动态选择默认字体：英文用 Roboto，中文用 NotoSerifSC
+  const defaultFont = isEnglishContent ? 'Roboto' : 'NotoSerifSC';
+
   /**
    * Helper to clean text based on language detection.
    * If English content is detected, replace smart quotes with straight quotes
@@ -261,17 +264,17 @@ function generatePdfDefinition(articleData, imageMap, options = {}, imageDimensi
     },
     content: content,
     defaultStyle: {
-      font: 'NotoSerifSC',
+      font: defaultFont, // 使用动态选择的字体 (Roboto 或 NotoSerifSC)
       fontSize: config.fontSize,
       lineHeight: 1.5
     },
     styles: {
-      header: { fontSize: config.fontSize * 2.2, bold: true, margin: [0, 0, 0, 10], color: '#333333' },
-      subheader: { fontSize: config.fontSize + 1, color: '#666666', margin: [0, 0, 0, 5] },
-      link: { fontSize: config.fontSize - 1, color: '#007bff', decoration: 'underline', margin: [0, 0, 0, 20] },
-      h2: { fontSize: config.fontSize * 1.6, bold: true, margin: [0, 20, 0, 10], color: '#333333' },
-      h3: { fontSize: config.fontSize * 1.35, bold: true, margin: [0, 15, 0, 8], color: '#333333' },
-      h4: { fontSize: config.fontSize * 1.2, bold: true, margin: [0, 10, 0, 5], color: '#333333' },
+      header: { font: defaultFont, fontSize: config.fontSize * 2.2, bold: true, margin: [0, 0, 0, 10], color: '#333333' },
+      subheader: { font: defaultFont, fontSize: config.fontSize + 1, color: '#666666', margin: [0, 0, 0, 5] },
+      link: { font: defaultFont, fontSize: config.fontSize - 1, color: '#007bff', decoration: 'underline', margin: [0, 0, 0, 20] },
+      h2: { font: defaultFont, fontSize: config.fontSize * 1.6, bold: true, margin: [0, 20, 0, 10], color: '#333333' },
+      h3: { font: defaultFont, fontSize: config.fontSize * 1.35, bold: true, margin: [0, 15, 0, 8], color: '#333333' },
+      h4: { font: defaultFont, fontSize: config.fontSize * 1.2, bold: true, margin: [0, 10, 0, 5], color: '#333333' },
       text: { margin: [0, 0, 0, 10] },
       list: { margin: [0, 0, 0, 10] },
       caption: { fontSize: 9, color: '#666666', margin: [0, 5, 0, 15], italics: true },
@@ -345,15 +348,20 @@ function parseInlineMarkdown(text, isEnglishContent = false) {
 
       switch (type) {
         case 'bold':
-          // 由于字体文件不支持粗体，使用 纯黑颜色 + 下划线 来进行视觉强调
-          tokens.push({
-            text: content,
-            bold: true,
-            color: '#000000', // 强制纯黑
-            decoration: 'underline', // 添加下划线区分
-            decorationStyle: 'solid',
-            decorationColor: '#000000'
-          });
+          if (isEnglishContent) {
+            // 英文模式 (Roboto)：直接使用原生粗体
+            tokens.push({ text: content, bold: true });
+          } else {
+            // 中文模式 (Noto)：使用视觉增强 (黑色+下划线)
+            tokens.push({
+              text: content,
+              bold: true,
+              color: '#000000',
+              decoration: 'underline',
+              decorationStyle: 'solid',
+              decorationColor: '#000000'
+            });
+          }
           break;
         case 'italic':
           tokens.push({ text: content, italics: true });

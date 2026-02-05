@@ -1655,12 +1655,18 @@ document.addEventListener('DOMContentLoaded', async () => {
             italics: 'NotoSerifSC.subset.ttf',
             bolditalics: 'NotoSerifSC.subset.ttf'
           },
+          Roboto: {
+            normal: 'Roboto-Regular.ttf',
+            bold: 'Roboto-Bold.ttf',
+            italics: 'Roboto-Italic.ttf',
+            bolditalics: 'Roboto-BoldItalic.ttf'
+          },
           // Fallback mapping for RobotoMono
           RobotoMono: {
-            normal: 'NotoSerifSC.subset.ttf',
-            bold: 'NotoSerifSC.subset.ttf',
-            italics: 'NotoSerifSC.subset.ttf',
-            bolditalics: 'NotoSerifSC.subset.ttf'
+            normal: 'Roboto-Regular.ttf',
+            bold: 'Roboto-Bold.ttf',
+            italics: 'Roboto-Italic.ttf',
+            bolditalics: 'Roboto-BoldItalic.ttf'
           }
         };
       } else {

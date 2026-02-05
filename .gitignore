@@ -26,6 +26,9 @@ build/
 *.test.js
 test/
 
-# Temporary files
+# Fonts
+*.ttf
+scripts/temp_fonts/
+libs/vfs_fonts.js
 *.tmp
 .temp/
