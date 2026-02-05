@@ -802,9 +802,53 @@ document.addEventListener('DOMContentLoaded', async () => {
      }
   }
 
+  /**
+   * 优化 Substack CDN 图片 URL，获取高分辨率版本
+   * 输入: https://substackcdn.com/image/fetch/w_140,h_140,.../https%3A%2F%2Fsubstack-post-media...
+   * 输出: https://substackcdn.com/image/fetch/w_1456,c_limit,f_auto,q_auto:best/.../原图URL
+   */
+  function optimizeSubstackImageUrl(url) {
+    if (!url) return url;
+
+    // 处理 substackcdn.com CDN 图片
+    if (url.includes('substackcdn.com/image/fetch')) {
+      // 替换尺寸参数为高分辨率版本
+      // 原始格式: /image/fetch/w_140,h_140,c_fill,f_auto,q_auto:good,fl_progressive:steep,g_auto/
+      // 优化格式: /image/fetch/w_1456,c_limit,f_auto,q_auto:best,fl_progressive:steep/
+      return url.replace(
+        /\/image\/fetch\/[^/]+\//,
+        '/image/fetch/w_1456,c_limit,f_auto,q_auto:best,fl_progressive:steep/'
+      );
+    }
+
+    return url;
+  }
+
+  /**
+   * 获取图片的实际尺寸（用于 PDF 渲染时避免小图过度放大）
+   * @param {string} base64 - Base64 编码的图片数据
+   * @returns {Promise<{width: number, height: number}>}
+   */
+  function getImageDimensions(base64) {
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.onload = () => {
+        resolve({ width: img.naturalWidth, height: img.naturalHeight });
+      };
+      img.onerror = () => {
+        resolve({ width: 0, height: 0 }); // 失败时返回0，使用默认宽度
+      };
+      img.src = base64;
+    });
+  }
+
   async function fetchImage(url) {
     try {
-      const response = await fetch(url);
+      // 先优化 URL 获取高分辨率版本
+      const optimizedUrl = optimizeSubstackImageUrl(url);
+      console.log('[Popup] Fetching image:', url === optimizedUrl ? url : `${url} -> ${optimizedUrl}`);
+
+      const response = await fetch(optimizedUrl);
       if (!response.ok) throw new Error('Fetch failed');
       return await response.blob();
     } catch (e) {
@@ -1477,8 +1521,9 @@ document.addEventListener('DOMContentLoaded', async () => {
       setButtonFeedback(btn, 'loading', 'Preparing...');
       showStatus('Preparing PDF resources...', 'info');
 
-      // 1. Fetch images and convert to Base64
+      // 1. Fetch images and convert to Base64, also get dimensions
       const imageMap = new Map();
+      const imageDimensionsMap = new Map(); // 存储图片实际尺寸
       const urls = [];
       if (articleData.meta?.image) urls.push(articleData.meta.image);
       articleData.content.sections.forEach(s => {
@@ -1496,6 +1541,11 @@ document.addEventListener('DOMContentLoaded', async () => {
             try {
               const base64 = await blobToBase64(blob);
               imageMap.set(url, base64);
+
+              // 获取图片实际尺寸
+              const dimensions = await getImageDimensions(base64);
+              imageDimensionsMap.set(url, dimensions);
+              console.log(`[Popup] Image dimensions for ${url.substring(0, 50)}...: ${dimensions.width}x${dimensions.height}`);
             } catch (e) {
               console.warn('Failed to convert blob to base64', url);
             }
@@ -1517,7 +1567,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         fontSize: settings.pdfFontSize
       };
 
-      const docDefinition = generatePdfDefinition(articleData, imageMap, pdfOptions);
+      const docDefinition = generatePdfDefinition(articleData, imageMap, pdfOptions, imageDimensionsMap);
 
       // 3. Download
       const filename = generateFilename(articleData).replace(/\.md$/, ''); // Remove extension, pdfmake adds .pdf

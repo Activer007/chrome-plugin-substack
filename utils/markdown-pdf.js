@@ -6,15 +6,49 @@
  * @param {boolean} options.showCover - Whether to include the cover image
  * @param {boolean} options.showFootnotes - Whether to include footnotes
  * @param {number} options.fontSize - Base font size (default 11)
+ * @param {Map} imageDimensionsMap - Map of image URLs to {width, height} dimensions
  * @returns {Object} PDFMake document definition
  */
-function generatePdfDefinition(articleData, imageMap, options = {}) {
+function generatePdfDefinition(articleData, imageMap, options = {}, imageDimensionsMap = new Map()) {
   // Default options
   const config = {
     showCover: options.showCover !== false,
     showFootnotes: options.showFootnotes !== false,
     fontSize: parseInt(options.fontSize) || 11
   };
+
+  // PDF 内容区最大宽度（考虑页边距后）
+  const MAX_IMAGE_WIDTH = 480;
+  const COVER_MAX_WIDTH = 500;
+
+  /**
+   * 根据图片实际尺寸计算 PDF 中的显示宽度
+   * 避免小图过度放大导致模糊
+   * @param {string} url - 原始图片 URL
+   * @param {number} maxWidth - 最大允许宽度
+   * @returns {number} 计算后的显示宽度
+   */
+  function calculateImageWidth(url, maxWidth) {
+    const dimensions = imageDimensionsMap.get(url);
+    if (!dimensions || !dimensions.width || dimensions.width <= 0) {
+      // 无尺寸信息时使用默认最大宽度
+      return maxWidth;
+    }
+
+    const actualWidth = dimensions.width;
+
+    // 如果原图宽度小于最大宽度，使用原图宽度（避免放大）
+    // 如果原图宽度大于最大宽度，缩小到最大宽度
+    if (actualWidth < maxWidth) {
+      // 对于特别小的图片（<200px），添加日志提醒
+      if (actualWidth < 200) {
+        console.log(`[PDF] Small image detected (${actualWidth}px), using original size to avoid blur`);
+      }
+      return actualWidth;
+    }
+
+    return maxWidth;
+  }
 
   // Determine if content is primarily English to apply smart quote cleanup
   // Simple heuristic: check if title contains CJK characters.
@@ -71,9 +105,10 @@ function generatePdfDefinition(articleData, imageMap, options = {}) {
   // 3. Cover Image
   if (config.showCover) {
     if (articleData.meta.image && imageMap.has(articleData.meta.image)) {
+      const coverWidth = calculateImageWidth(articleData.meta.image, COVER_MAX_WIDTH);
       content.push({
         image: imageMap.get(articleData.meta.image),
-        width: 500,
+        width: coverWidth,
         style: 'coverImage',
         alignment: 'center'
       });
@@ -105,9 +140,10 @@ function generatePdfDefinition(articleData, imageMap, options = {}) {
 
       case 'image':
         if (imageMap.has(section.content)) {
+          const imgWidth = calculateImageWidth(section.content, MAX_IMAGE_WIDTH);
           content.push({
             image: imageMap.get(section.content),
-            width: 480,
+            width: imgWidth,
             style: 'image',
             alignment: 'center'
           });
