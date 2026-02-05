@@ -2,9 +2,20 @@
  * Converts structured article data to PDFMake document definition
  * @param {Object} articleData - The article data extracted from the page
  * @param {Map} imageMap - Map of image URLs to Base64 strings
+ * @param {Object} options - PDF Generation options
+ * @param {boolean} options.showCover - Whether to include the cover image
+ * @param {boolean} options.showFootnotes - Whether to include footnotes
+ * @param {number} options.fontSize - Base font size (default 11)
  * @returns {Object} PDFMake document definition
  */
-function generatePdfDefinition(articleData, imageMap) {
+function generatePdfDefinition(articleData, imageMap, options = {}) {
+  // Default options
+  const config = {
+    showCover: options.showCover !== false,
+    showFootnotes: options.showFootnotes !== false,
+    fontSize: parseInt(options.fontSize) || 11
+  };
+
   // Determine if content is primarily English to apply smart quote cleanup
   // Simple heuristic: check if title contains CJK characters.
   // If NO CJK characters in title, assume English/Western content and clean up quotes.
@@ -58,17 +69,16 @@ function generatePdfDefinition(articleData, imageMap) {
   content.push({ text: '\n', fontSize: 10 }); // Spacer
 
   // 3. Cover Image
-  if (articleData.meta.image && imageMap.has(articleData.meta.image)) {
-    content.push({
-      image: imageMap.get(articleData.meta.image),
-      width: 500,
-      style: 'coverImage',
-      alignment: 'center'
-    });
-    content.push({ text: '\n', fontSize: 10 });
-  } else if (articleData.meta.image) {
-    // If image failed to load, just show a placeholder text or skip
-    // content.push({ text: '[Cover Image]', style: 'caption', alignment: 'center' });
+  if (config.showCover) {
+    if (articleData.meta.image && imageMap.has(articleData.meta.image)) {
+      content.push({
+        image: imageMap.get(articleData.meta.image),
+        width: 500,
+        style: 'coverImage',
+        alignment: 'center'
+      });
+      content.push({ text: '\n', fontSize: 10 });
+    }
   }
 
   // 4. Content Sections
@@ -169,7 +179,7 @@ function generatePdfDefinition(articleData, imageMap) {
   });
 
   // 5. Footnotes
-  if (articleData.footnotes && articleData.footnotes.length > 0) {
+  if (config.showFootnotes && articleData.footnotes && articleData.footnotes.length > 0) {
     content.push({ text: '\n\nFootnotes', style: 'h3', pageBreak: 'before' });
     articleData.footnotes.forEach(fn => {
       content.push({
@@ -195,16 +205,16 @@ function generatePdfDefinition(articleData, imageMap) {
     content: content,
     defaultStyle: {
       font: 'NotoSerifSC',
-      fontSize: 11,
+      fontSize: config.fontSize,
       lineHeight: 1.5
     },
     styles: {
-      header: { fontSize: 24, bold: true, margin: [0, 0, 0, 10], color: '#333333' },
-      subheader: { fontSize: 12, color: '#666666', margin: [0, 0, 0, 5] },
-      link: { fontSize: 10, color: '#007bff', decoration: 'underline', margin: [0, 0, 0, 20] },
-      h2: { fontSize: 18, bold: true, margin: [0, 20, 0, 10], color: '#333333' },
-      h3: { fontSize: 15, bold: true, margin: [0, 15, 0, 8], color: '#333333' },
-      h4: { fontSize: 13, bold: true, margin: [0, 10, 0, 5], color: '#333333' },
+      header: { fontSize: config.fontSize * 2.2, bold: true, margin: [0, 0, 0, 10], color: '#333333' },
+      subheader: { fontSize: config.fontSize + 1, color: '#666666', margin: [0, 0, 0, 5] },
+      link: { fontSize: config.fontSize - 1, color: '#007bff', decoration: 'underline', margin: [0, 0, 0, 20] },
+      h2: { fontSize: config.fontSize * 1.6, bold: true, margin: [0, 20, 0, 10], color: '#333333' },
+      h3: { fontSize: config.fontSize * 1.35, bold: true, margin: [0, 15, 0, 8], color: '#333333' },
+      h4: { fontSize: config.fontSize * 1.2, bold: true, margin: [0, 10, 0, 5], color: '#333333' },
       text: { margin: [0, 0, 0, 10] },
       list: { margin: [0, 0, 0, 10] },
       caption: { fontSize: 9, color: '#666666', margin: [0, 5, 0, 15], italics: true },
