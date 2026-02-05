@@ -10,6 +10,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   const extractZipBtn = document.getElementById('extractZipBtn');
   const copyBtn = document.getElementById('copyBtn');
   const pdfBtn = document.getElementById('pdfBtn');
+  const pdfDirectBtn = document.getElementById('pdfDirectBtn'); // Added definition
   const obsidianBtn = document.getElementById('obsidianBtn');
   const previewBtn = document.getElementById('previewBtn');
   const previewModal = document.getElementById('previewModal');
@@ -1232,6 +1233,91 @@ document.addEventListener('DOMContentLoaded', async () => {
       console.error(e);
       showStatus('Obsidian Error: ' + e.message, 'error');
     }
+  }
+
+  async function exportToPdfDirect() {
+    if (!articleData) return;
+    const btn = document.getElementById('pdfDirectBtn');
+
+    try {
+      btn.disabled = true;
+      const originalText = btn.innerHTML;
+      btn.innerHTML = '<span>Processing...</span>';
+      showStatus('Preparing PDF resources...', 'info');
+
+      // 1. Fetch images and convert to Base64
+      const imageMap = new Map();
+      const urls = [];
+      if (articleData.meta?.image) urls.push(articleData.meta.image);
+      articleData.content.sections.forEach(s => {
+        if (s.type === 'image') urls.push(s.content);
+      });
+      const uniqueUrls = [...new Set(urls)];
+
+      if (uniqueUrls.length > 0) {
+        btn.innerHTML = `<span>Fetching images (${uniqueUrls.length})...</span>`;
+        let downloadCount = 0;
+
+        const promises = uniqueUrls.map(async (url) => {
+          const blob = await fetchImage(url);
+          if (blob) {
+            try {
+              const base64 = await blobToBase64(blob);
+              imageMap.set(url, base64);
+            } catch (e) {
+              console.warn('Failed to convert blob to base64', url);
+            }
+          }
+          downloadCount++;
+          if (downloadCount % 5 === 0) {
+             btn.innerHTML = `<span>Fetching images (${downloadCount}/${uniqueUrls.length})...</span>`;
+          }
+        });
+        await Promise.all(promises);
+      }
+
+      // 2. Generate PDF Definition
+      btn.innerHTML = '<span>Generating PDF...</span>';
+      const docDefinition = generatePdfDefinition(articleData, imageMap);
+
+      // 3. Download
+      const filename = generateFilename(articleData).replace(/\.md$/, ''); // Remove extension, pdfmake adds .pdf
+
+      // Configure fonts
+      pdfMake.fonts = {
+        SourceHanSerif: {
+          normal: 'SourceHanSerif.ttf',
+          bold: 'SourceHanSerif.ttf',
+          italics: 'SourceHanSerif.ttf',
+          bolditalics: 'SourceHanSerif.ttf'
+        }
+      };
+
+      pdfMake.createPdf(docDefinition).download(filename);
+
+      showStatus('PDF Downloaded!', 'success');
+      btn.innerHTML = originalText;
+
+    } catch (e) {
+      console.error(e);
+      showStatus('PDF Error: ' + e.message, 'error');
+      btn.innerHTML = originalText; // Restore text
+    } finally {
+      btn.disabled = false;
+    }
+  }
+
+  function blobToBase64(blob) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result);
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    });
+  }
+
+  if (pdfDirectBtn) {
+    pdfDirectBtn.addEventListener('click', exportToPdfDirect);
   }
 
   extractBtn.addEventListener('click', () => extractAndDownload(false));
