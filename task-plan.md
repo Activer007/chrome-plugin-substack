@@ -2,14 +2,14 @@
 
 ## 📊 当前项目状态分析
 
-### 当前版本：v1.0.4 (2026-02-05)
+### 当前版本：v1.1.5 (2026-02-05)
 
 ### 核心功能
-从 Substack 文章提取数据 → 转换为 Markdown → 下载到本地
+从 Substack 文章提取数据 → 转换为多种格式 → 下载到本地
 
 ### 整体进度
 - **第一阶段（核心体验增强）**：✅ 100% 完成 (6/6)
-- **第二阶段（高级功能）**：✅ 75% 完成 (3/4)
+- **第二阶段（高级功能）**：✅ 100% 完成 (4/4) ← v1.1.5 完成
 - **第三阶段（架构升级）**：⬜ 0% 完成 (0/3)
 - **第四阶段（合规性检查）**：⬜ 0% 完成 (0/5)
 
@@ -24,10 +24,17 @@
 - ✅ YAML Frontmatter 支持 (Obsidian 兼容)
 - ✅ 剪贴板一键复制
 - ✅ PDF 打印优化（v1.0.3 修复标题空白）
+- ✅ **客户端 PDF 直接导出**（v1.1.5 新增）
 - ✅ 图片本地化 ZIP 导出
 - ✅ Obsidian 一键保存（URI Scheme）
 - ✅ Markdown 预览界面
 - ✅ 脚注支持（标准 Markdown 格式）
+- ✅ **UI/UX 全面升级**（v1.1.5 Phase 1-3）
+  - ✅ 沉浸式卡片布局
+  - ✅ 骨架屏加载动画
+  - ✅ 空状态设计
+  - ✅ 状态管理重构（data-state）
+  - ✅ 操作视觉反馈优化
 
 ### 技术架构
 ```
@@ -210,12 +217,13 @@ chrome-plugin-substack/
 
 ### 🔵 第二阶段：高级功能 (Power Features)
 **目标**：解决"永久存档"和"无缝集成"的痛点。
-*预计耗时：1 周 | 实际进度：3/4 完成 (75%)*
+*预计耗时：1 周 | 实际进度：4/4 完成 (100%)*
 
 1.  ✅ **图片本地化 (ZIP)**: 使用 JSZip 打包图片和 Markdown，实现真正离线阅读。
 2.  ✅ **Obsidian 一键保存**: 利用 URI Scheme 直接写入 Obsidian Vault。
-3.  **智能内容清理**: 增加"纯净模式"选项，移除推广干扰。
+3.  ✅ **智能内容清理**: 增加"纯净模式"选项，移除推广干扰。
 4.  ✅ **预览界面**: 下载前预览并确认内容（v1.0.3 已实现基础预览功能）。
+5.  ✅ **客户端 PDF 导出**: 使用 pdfmake 直接生成 PDF，无需打印对话框（v1.1.5 新增）。
 
 ### 🟠 第三阶段：架构升级与扩展 (Scale)
 **目标**：提升代码稳健性，支持更多场景。
@@ -238,6 +246,155 @@ chrome-plugin-substack/
 ---
 
 ## 📋 更新日志
+
+### 2026-02-05 - v1.1.5
+**分支**: `feat/settings-and-image-optimization`
+**PRs**: [#9](https://github.com/Activer007/chrome-plugin-substack/pull/9), [#10](https://github.com/Activer007/chrome-plugin-substack/pull/10), [#12](https://github.com/Activer007/chrome-plugin-substack/pull/12), [#13](https://github.com/Activer007/chrome-plugin-substack/pull/13)
+
+**版本说明**：本次更新包含重大功能改进，因此次版本号从 1.0.x 升级至 1.1.x。
+
+---
+
+#### Phase 1-2: 视觉重构与布局现代化（PR #9）
+**分支**: `feat/settings-and-image-optimization`
+**PRs**: [#9](https://github.com/Activer007/chrome-plugin-substack/pull/9), [#10](https://github.com/Activer007/chrome-plugin-substack/pull/10), [#12](https://github.com/Activer007/chrome-plugin-substack/pull/12), [#13](https://github.com/Activer007/chrome-plugin-substack/pull/13)
+
+#### 功能概述
+本版本完成了 **UI/UX 全面升级（Phase 1-3）** 和 **客户端 PDF 直接导出** 功能。
+
+---
+
+#### Phase 1-2: 视觉重构与布局现代化（PR #9）
+**目标**：打造现代、沉浸式的用户体验。
+
+**核心变更**：
+1. **设计系统**
+   - 引入 CSS 变量（颜色、字体、间距、阴影）
+   - 统一主题系统，便于后续维护
+
+2. **沉浸式卡片布局**
+   - 使用封面图作为背景，添加渐变遮罩
+   - 创造视觉冲击力，增强文章识别度
+
+3. **布局重构**
+   - **紧凑头部**：品牌与标题无缝集成
+   - **并排主按钮**："Markdown" 和 "ZIP" 并列显示
+   - **4 列工具网格**：Copy、PDF、Obsidian、Preview 整齐排列
+
+4. **提取修复**
+   - 修复 og:image 提取（DOM 回退模式）
+
+**技术细节**：
+```css
+/* 沉浸式卡片 */
+.article-card {
+  background: linear-gradient(to bottom, rgba(0,0,0,0.1), rgba(0,0,0,0.6)),
+              url('var(--cover-image)') center/cover;
+}
+```
+
+---
+
+#### Phase 3: 交互打磨与性能优化（PR #10）
+**目标**：提升感知性能和用户引导。
+
+**核心变更**：
+1. **骨架屏加载动画**
+   - Shimmer 效果模拟真实卡片布局
+   - 减少布局偏移（CLS），提升感知速度
+
+2. **空状态设计**
+   - 专属 "No Article Detected" 视图
+   - 清晰插图 + "Retry" 按钮
+
+3. **设置面板动画**
+   - 从顶部滑下（`transform: translateY`）
+   - 不推动内容，保持上下文
+
+4. **状态管理重构**
+   - 从手动 `style.display` 切换到 `data-state` 属性
+   - CSS 强制互斥，防止 Loading/Empty/Success 状态重叠
+
+**技术细节**：
+```css
+/* 状态管理 */
+body[data-state="loading"] .skeleton { display: block; }
+body[data-state="success"] .article-card { display: block; }
+
+/* 防止重叠 */
+body[data-state="loading"] .article-card { display: none; }
+```
+
+---
+
+#### 客户端 PDF 直接导出（PR #12）
+**目标**：无需打印对话框，直接生成高质量 PDF。
+
+**核心功能**：
+1. **客户端生成**
+   - 使用 `pdfmake` 在浏览器中生成 PDF
+   - 无需服务器，保护隐私
+
+2. **自定义字体支持**
+   - 集成 `Noto Serif SC`
+   - 完美支持中英文混排
+
+3. **智能排版**
+   - 自动检测文章语言（基于标题）
+   - 英文文章：智能引号 → 直引号（修复 CJK 字体间距问题）
+   - 自定义 Markdown 解析器（加粗、斜体、代码块）
+
+4. **图片嵌入**
+   - 自动下载并嵌入文章图片到 PDF
+
+**技术细节**：
+```javascript
+// 语言检测
+const isChinese = /[\u4e00-\u9fa5]/.test(title);
+
+// 智能引号处理
+const cleanText = isChinese ? text : text.replace(/'/g, "'");
+
+// 字体配置
+pdfMake.vfs = {
+  'NotoSerifSC.subset.ttf': base64Font
+};
+```
+
+**新增文件**：
+- `libs/pdfmake.min.js`
+- `libs/vfs_fonts.js`（自定义构建）
+- `utils/markdown-pdf.js`
+
+---
+
+#### UI 布局优化与反馈改进（PR #13）
+**目标**：突出 PDF 导出功能，优化操作反馈。
+
+**核心变更**：
+1. **按钮布局调整**
+   - "PDF (Direct)" 提升至主操作按钮（与 Markdown 并排）
+   - "ZIP" 移至次要工具栏
+   - "PDF (Print)" 重命名为 "Print"
+
+2. **视觉反馈**
+   - PDF 按钮：Processing → Exported
+   - ZIP 按钮：Packing → Saved
+   - Obsidian 按钮：Opening → 确认提示
+
+3. **Bug 修复**
+   - 修复字体路径 `NotoSerifSC.subset.ttf`，解决 "File not found" 错误
+   - 修复 PDF 按钮点击闪烁问题（正确管理按钮状态）
+
+**提交记录**：
+- 53d57bd: Refactor: remove base64 image support and increase popup height
+- 0905001: Feat: overhaul settings UI and add new config options
+- 0ed7077: Fix: swap pdf/zip buttons and improve feedback logic
+- 9d7dcc4: Chore: optimize font size and finalize pdf export features
+- 78c7c42: Feat: optimize pdf typography with smart quote handling
+- ca4b2fc: Feat: add direct PDF export functionality
+
+---
 
 ### 2026-02-05 - v1.0.4
 **分支**: `fix/settings-button`
@@ -367,19 +524,18 @@ h1 {
 
 ---
 
-## 🎯 剩余任务优先级建议 (v1.0.3 之后)
+## 🎯 剩余任务优先级建议 (v1.1.5 之后)
 
 ### ⚡ 立即可做（高优先级）
 
-#### 1. 智能内容清理（"纯净模式"）- 第二阶段收尾
-**预计耗时**：0.5-1 天
-**价值**：🌟🌟🌟🌟⭐ (用户需求明显)
+#### ~~1. 智能内容清理（"纯净模式"）- 第二阶段收尾~~
+**状态**：✅ v1.1.5 已完成
 
-**任务清单**：
-- [ ] 在 popup.html 添加"纯净模式"checkbox
-- [ ] 实现内容过滤逻辑（黑名单选择器）
-- [ ] 过滤 Subscribe/Upgrade/Gift 等推广内容
-- [ ] 测试不同页面的过滤效果
+**已完成任务**：
+- ✅ 在 popup.html 添加"纯净模式"checkbox
+- ✅ 实现内容过滤逻辑（黑名单选择器）
+- ✅ 过滤 Subscribe/Upgrade/Gift 等推广内容
+- ✅ 测试不同页面的过滤效果
 
 ---
 
@@ -437,25 +593,23 @@ h1 {
 
 ## 📌 下一步行动建议
 
-### 推荐路线 A：快速收尾 + 发布（适合近期发布）
+### 推荐路线 A：快速发布（推荐）⭐
 ```
-v1.0.3 (当前) → v1.0.4 (纯净模式) → v1.1.0 (Chrome Store 发布)
+v1.1.5 (当前) → v1.2.0 (Chrome Store 发布)
 ```
-1. ✅ 实现"纯净模式"（0.5-1 天）
-2. ✅ Chrome Store 发布准备（1 天）
-3. ✅ 提交 Chrome Web Store 审核
+1. Chrome Store 发布准备（1 天）
+2. 提交 Chrome Web Store 审核
 
-### 推荐路线 B：完善功能 + 架构升级（适合长期维护）
+### 推荐路线 B：架构升级 + 发布（适合长期维护）
 ```
-v1.0.3 (当前) → v1.0.4 (纯净模式) → v1.1.0 (代码模块化) → v1.2.0 (批量下载)
+v1.1.5 (当前) → v1.2.0 (代码模块化) → v1.3.0 (批量下载) → v1.4.0 (Chrome Store 发布)
 ```
-1. ✅ 实现"纯净模式"（0.5-1 天）
-2. ✅ 代码模块化重构（1-2 天）
-3. ✅ 批量下载功能（3-5 天）
-4. ✅ Chrome Store 发布准备（1 天）
+1. 代码模块化重构（1-2 天）
+2. 批量下载功能（3-5 天）
+3. Chrome Store 发布准备（1 天）
 
 ---
 
 **文档更新时间**：2026-02-05
-**当前版本**：v1.0.4
-**状态**：第一阶段 ✅ 100% | 第二阶段 ✅ 75% | 第三阶段 ⬜ 0% | 第四阶段 ⬜ 0%
+**当前版本**：v1.1.5
+**状态**：第一阶段 ✅ 100% | 第二阶段 ✅ 100% | 第三阶段 ⬜ 0% | 第四阶段 ⬜ 0%
